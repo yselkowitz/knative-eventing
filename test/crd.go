@@ -176,6 +176,7 @@ func NGinxPod(namespace string) *corev1.Pod {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "nginx",
 			Namespace: namespace,
+			Annotations: map[string]string{"sidecar.istio.io/inject": "true"},
 		},
 		Spec: corev1.PodSpec{
 			Containers: []corev1.Container{
