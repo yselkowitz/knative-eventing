@@ -19,6 +19,8 @@ import (
 	"flag"
 	"log"
 
+	"github.com/knative/eventing/pkg/channeldefaulter"
+
 	"go.uber.org/zap"
 
 	"github.com/knative/pkg/configmap"
@@ -27,10 +29,7 @@ import (
 	"github.com/knative/pkg/signals"
 	"github.com/knative/pkg/webhook"
 
-	channelsv1alpha1 "github.com/knative/eventing/pkg/apis/channels/v1alpha1"
 	eventingv1alpha1 "github.com/knative/eventing/pkg/apis/eventing/v1alpha1"
-	feedsv1alpha1 "github.com/knative/eventing/pkg/apis/feeds/v1alpha1"
-	flowsv1alpha1 "github.com/knative/eventing/pkg/apis/flows/v1alpha1"
 	"github.com/knative/eventing/pkg/logconfig"
 	"github.com/knative/eventing/pkg/system"
 
@@ -73,6 +72,13 @@ func main() {
 	configMapWatcher := configmap.NewInformedWatcher(kubeClient, system.Namespace)
 
 	configMapWatcher.Watch(logconfig.ConfigName, logging.UpdateLevelFromConfigMap(logger, atomicLevel, logconfig.Webhook, logconfig.Webhook))
+
+	// Watch the default-channel-webhook ConfigMap and dynamically update the default
+	// ClusterChannelProvisioner.
+	channelDefaulter := channeldefaulter.New(logger.Desugar())
+	eventingv1alpha1.ChannelDefaulterSingleton = channelDefaulter
+	configMapWatcher.Watch(channeldefaulter.ConfigMapName, channelDefaulter.UpdateConfigMap)
+
 	if err = configMapWatcher.Start(stopCh); err != nil {
 		logger.Fatalf("failed to start webhook configmap watcher: %v", err)
 	}
@@ -90,26 +96,9 @@ func main() {
 		Options: options,
 		Handlers: map[schema.GroupVersionKind]webhook.GenericCRD{
 			// For group eventing.knative.dev,
-			eventingv1alpha1.SchemeGroupVersion.WithKind("Channel"):            &eventingv1alpha1.Channel{},
-			eventingv1alpha1.SchemeGroupVersion.WithKind("ClusterProvisioner"): &eventingv1alpha1.ClusterProvisioner{},
-			eventingv1alpha1.SchemeGroupVersion.WithKind("Source"):             &eventingv1alpha1.Source{},
-			eventingv1alpha1.SchemeGroupVersion.WithKind("Subscription"):       &eventingv1alpha1.Subscription{},
-
-			// For group channels.knative.dev,
-			channelsv1alpha1.SchemeGroupVersion.WithKind("Bus"):          &channelsv1alpha1.Bus{},
-			channelsv1alpha1.SchemeGroupVersion.WithKind("ClusterBus"):   &channelsv1alpha1.ClusterBus{},
-			channelsv1alpha1.SchemeGroupVersion.WithKind("Channel"):      &channelsv1alpha1.Channel{},
-			channelsv1alpha1.SchemeGroupVersion.WithKind("Subscription"): &channelsv1alpha1.Subscription{},
-
-			// For group feeds.knative.dev,
-			feedsv1alpha1.SchemeGroupVersion.WithKind("EventSource"):        &feedsv1alpha1.EventSource{},
-			feedsv1alpha1.SchemeGroupVersion.WithKind("ClusterEventSource"): &feedsv1alpha1.ClusterEventSource{},
-			feedsv1alpha1.SchemeGroupVersion.WithKind("EventType"):          &feedsv1alpha1.EventType{},
-			feedsv1alpha1.SchemeGroupVersion.WithKind("ClusterEventType"):   &feedsv1alpha1.ClusterEventType{},
-			feedsv1alpha1.SchemeGroupVersion.WithKind("Feed"):               &feedsv1alpha1.Feed{},
-
-			// For group flows.knative.dev,
-			flowsv1alpha1.SchemeGroupVersion.WithKind("Flow"): &flowsv1alpha1.Flow{},
+			eventingv1alpha1.SchemeGroupVersion.WithKind("Channel"):                   &eventingv1alpha1.Channel{},
+			eventingv1alpha1.SchemeGroupVersion.WithKind("ClusterChannelProvisioner"): &eventingv1alpha1.ClusterChannelProvisioner{},
+			eventingv1alpha1.SchemeGroupVersion.WithKind("Subscription"):              &eventingv1alpha1.Subscription{},
 		},
 		Logger: logger,
 	}

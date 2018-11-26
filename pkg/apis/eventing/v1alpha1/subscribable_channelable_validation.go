@@ -25,7 +25,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/equality"
 )
 
-func isSubscribableEmpty(f corev1.ObjectReference) bool {
+func isChannelEmpty(f corev1.ObjectReference) bool {
 	return equality.Semantic.DeepEqual(f, corev1.ObjectReference{})
 }
 
@@ -33,32 +33,7 @@ func isSubscribableEmpty(f corev1.ObjectReference) bool {
 // - Kind       == 'Channel'
 // - APIVersion == 'eventing.knative.dev/v1alpha1'
 // - Name       == not empty
-func isValidSubscribable(f corev1.ObjectReference) *apis.FieldError {
-	errs := isValidObjectReference(f)
-
-	if f.Kind != "Channel" {
-		fe := apis.ErrInvalidValue(f.Kind, "kind")
-		fe.Paths = []string{"kind"}
-		fe.Details = "only 'Channel' kind is allowed"
-		errs = errs.Also(fe)
-	}
-	if f.APIVersion != "eventing.knative.dev/v1alpha1" {
-		fe := apis.ErrInvalidValue(f.APIVersion, "apiVersion")
-		fe.Details = "only eventing.knative.dev/v1alpha1 is allowed for apiVersion"
-		errs = errs.Also(fe)
-	}
-	return errs
-}
-
-func isChannelableEmpty(f corev1.ObjectReference) bool {
-	return equality.Semantic.DeepEqual(f, corev1.ObjectReference{})
-}
-
-// Valid from only contains the following fields:
-// - Kind       == 'Channel'
-// - APIVersion == 'eventing.knative.dev/v1alpha1'
-// - Name       == not empty
-func isValidChannelable(f corev1.ObjectReference) *apis.FieldError {
+func isValidChannel(f corev1.ObjectReference) *apis.FieldError {
 	errs := isValidObjectReference(f)
 
 	if f.Kind != "Channel" {

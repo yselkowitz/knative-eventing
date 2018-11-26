@@ -24,12 +24,13 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
+	eventingduck "github.com/knative/eventing/pkg/apis/duck/v1alpha1"
 	eventingv1alpha1 "github.com/knative/eventing/pkg/apis/eventing/v1alpha1"
 	controllertesting "github.com/knative/eventing/pkg/controller/testing"
+	util "github.com/knative/eventing/pkg/provisioners"
 	"github.com/knative/eventing/pkg/sidecar/configmap"
 	"github.com/knative/eventing/pkg/sidecar/fanout"
 	"github.com/knative/eventing/pkg/sidecar/multichannelfanout"
-	duckv1alpha1 "github.com/knative/pkg/apis/duck/v1alpha1"
 	istiov1alpha3 "github.com/knative/pkg/apis/istio/v1alpha3"
 	"go.uber.org/zap"
 	corev1 "k8s.io/api/core/v1"
@@ -43,7 +44,7 @@ import (
 )
 
 const (
-	cpName = "in-memory-channel"
+	ccpName = "in-memory-channel"
 
 	cNamespace = "test-namespace"
 	cName      = "test-channel"
@@ -73,16 +74,16 @@ var (
 				Namespace: cNamespace,
 				Name:      "c1",
 				FanoutConfig: fanout.Config{
-					Subscriptions: []duckv1alpha1.ChannelSubscriberSpec{
+					Subscriptions: []eventingduck.ChannelSubscriberSpec{
 						{
-							CallableDomain: "foo",
+							SubscriberURI: "foo",
 						},
 						{
-							SinkableDomain: "bar",
+							ReplyURI: "bar",
 						},
 						{
-							CallableDomain: "baz",
-							SinkableDomain: "qux",
+							SubscriberURI: "baz",
+							ReplyURI:      "qux",
 						},
 					},
 				},
@@ -91,9 +92,9 @@ var (
 				Namespace: cNamespace,
 				Name:      "c3",
 				FanoutConfig: fanout.Config{
-					Subscriptions: []duckv1alpha1.ChannelSubscriberSpec{
+					Subscriptions: []eventingduck.ChannelSubscriberSpec{
 						{
-							CallableDomain: "steve",
+							SubscriberURI: "steve",
 						},
 					},
 				},
@@ -111,22 +112,20 @@ var (
 				Kind: "Channel",
 			},
 			Spec: eventingv1alpha1.ChannelSpec{
-				Provisioner: &eventingv1alpha1.ProvisionerReference{
-					Ref: &corev1.ObjectReference{
-						Name: cpName,
-					},
+				Provisioner: &corev1.ObjectReference{
+					Name: ccpName,
 				},
-				Channelable: &duckv1alpha1.Channelable{
-					Subscribers: []duckv1alpha1.ChannelSubscriberSpec{
+				Subscribable: &eventingduck.Subscribable{
+					Subscribers: []eventingduck.ChannelSubscriberSpec{
 						{
-							CallableDomain: "foo",
+							SubscriberURI: "foo",
 						},
 						{
-							SinkableDomain: "bar",
+							ReplyURI: "bar",
 						},
 						{
-							CallableDomain: "baz",
-							SinkableDomain: "qux",
+							SubscriberURI: "baz",
+							ReplyURI:      "qux",
 						},
 					},
 				},
@@ -141,15 +140,13 @@ var (
 				Kind: "Channel",
 			},
 			Spec: eventingv1alpha1.ChannelSpec{
-				Provisioner: &eventingv1alpha1.ProvisionerReference{
-					Ref: &corev1.ObjectReference{
-						Name: "some-other-provisioner",
-					},
+				Provisioner: &corev1.ObjectReference{
+					Name: "some-other-provisioner",
 				},
-				Channelable: &duckv1alpha1.Channelable{
-					Subscribers: []duckv1alpha1.ChannelSubscriberSpec{
+				Subscribable: &eventingduck.Subscribable{
+					Subscribers: []eventingduck.ChannelSubscriberSpec{
 						{
-							CallableDomain: "anything",
+							SubscriberURI: "anything",
 						},
 					},
 				},
@@ -164,15 +161,13 @@ var (
 				Kind: "Channel",
 			},
 			Spec: eventingv1alpha1.ChannelSpec{
-				Provisioner: &eventingv1alpha1.ProvisionerReference{
-					Ref: &corev1.ObjectReference{
-						Name: cpName,
-					},
+				Provisioner: &corev1.ObjectReference{
+					Name: ccpName,
 				},
-				Channelable: &duckv1alpha1.Channelable{
-					Subscribers: []duckv1alpha1.ChannelSubscriberSpec{
+				Subscribable: &eventingduck.Subscribable{
+					Subscribers: []eventingduck.ChannelSubscriberSpec{
 						{
-							CallableDomain: "steve",
+							SubscriberURI: "steve",
 						},
 					},
 				},
@@ -225,7 +220,7 @@ func TestReconcile(t *testing.T) {
 		{
 			Name: "Channel not reconciled - nil ref",
 			InitialState: []runtime.Object{
-				makeChannelNilRef(),
+				makeChannelNilProvisioner(),
 			},
 		},
 		{
@@ -314,7 +309,7 @@ func TestReconcile(t *testing.T) {
 				MockGets: errorGettingK8sService(),
 			},
 			WantPresent: []runtime.Object{
-				makeChannelWithFinalizerAndSubscribable(),
+				makeChannelWithFinalizer(),
 			},
 			WantErrMsg: testErrorMessage,
 		},
@@ -329,7 +324,7 @@ func TestReconcile(t *testing.T) {
 			},
 			WantPresent: []runtime.Object{
 				// TODO: This should have a useful error message saying that the K8s Service failed.
-				makeChannelWithFinalizerAndSubscribable(),
+				makeChannelWithFinalizer(),
 			},
 			WantErrMsg: testErrorMessage,
 		},
@@ -358,7 +353,7 @@ func TestReconcile(t *testing.T) {
 			WantPresent: []runtime.Object{
 				// TODO: This should have a useful error message saying that the VirtualService
 				// failed.
-				makeChannelWithFinalizerAndSubscribableAndSinkable(),
+				makeChannelWithFinalizerAndAddress(),
 			},
 			WantErrMsg: testErrorMessage,
 		},
@@ -375,7 +370,7 @@ func TestReconcile(t *testing.T) {
 			WantPresent: []runtime.Object{
 				// TODO: This should have a useful error message saying that the VirtualService
 				// failed.
-				makeChannelWithFinalizerAndSubscribableAndSinkable(),
+				makeChannelWithFinalizerAndAddress(),
 			},
 			WantErrMsg: testErrorMessage,
 		},
@@ -429,7 +424,47 @@ func TestReconcile(t *testing.T) {
 				// not string equality, so it can't be done in WantPresent. Instead, we verify
 				// during the update call, swapping out the data and WantPresent with that inserted
 				// data.
-				MockUpdates: verifyConfigMapData(),
+				MockUpdates: verifyConfigMapData(channelsConfig),
+			},
+			WantPresent: []runtime.Object{
+				makeReadyChannel(),
+				makeK8sService(),
+				makeVirtualService(),
+				makeConfigMapWithVerifyConfigMapData(),
+			},
+		},
+		{
+			Name: "Channel reconcile successful - Channel has no subscribers",
+			InitialState: []runtime.Object{
+				makeChannel(),
+				makeConfigMap(),
+			},
+			Mocks: controllertesting.Mocks{
+				MockLists: (&paginatedChannelsListStruct{channels: []eventingv1alpha1.Channel{
+					{
+						ObjectMeta: metav1.ObjectMeta{
+							Namespace: "high-consul",
+							Name:      "duarte",
+						},
+						Spec: eventingv1alpha1.ChannelSpec{
+							Provisioner: &corev1.ObjectReference{
+								Name: ccpName,
+							},
+						},
+					},
+				}}).MockLists(),
+				// This is more accurate to be in WantPresent, but we need to check JSON equality,
+				// not string equality, so it can't be done in WantPresent. Instead, we verify
+				// during the update call, swapping out the data and WantPresent with that inserted
+				// data.
+				MockUpdates: verifyConfigMapData(multichannelfanout.Config{
+					ChannelConfigs: []multichannelfanout.ChannelConfig{
+						{
+							Namespace: "high-consul",
+							Name:      "duarte",
+						},
+					},
+				}),
 			},
 			WantPresent: []runtime.Object{
 				makeReadyChannel(),
@@ -472,10 +507,8 @@ func makeChannel() *eventingv1alpha1.Channel {
 			UID:       cUID,
 		},
 		Spec: eventingv1alpha1.ChannelSpec{
-			Provisioner: &eventingv1alpha1.ProvisionerReference{
-				Ref: &corev1.ObjectReference{
-					Name: cpName,
-				},
+			Provisioner: &corev1.ObjectReference{
+				Name: ccpName,
 			},
 		},
 	}
@@ -483,21 +516,15 @@ func makeChannel() *eventingv1alpha1.Channel {
 	return c
 }
 
-func makeChannelWithFinalizerAndSubscribable() *eventingv1alpha1.Channel {
+func makeChannelWithFinalizerAndAddress() *eventingv1alpha1.Channel {
 	c := makeChannelWithFinalizer()
-	c.Status.SetSubscribable(c.Namespace, c.Name)
-	return c
-}
-
-func makeChannelWithFinalizerAndSubscribableAndSinkable() *eventingv1alpha1.Channel {
-	c := makeChannelWithFinalizerAndSubscribable()
-	c.Status.SetSinkable(fmt.Sprintf("%s-channel.%s.svc.cluster.local", c.Name, c.Namespace))
+	c.Status.SetAddress(fmt.Sprintf("%s-channel.%s.svc.cluster.local", c.Name, c.Namespace))
 	return c
 }
 
 func makeReadyChannel() *eventingv1alpha1.Channel {
-	// Ready channels have the finalizer and are Subscribable and Sinkable.
-	c := makeChannelWithFinalizerAndSubscribableAndSinkable()
+	// Ready channels have the finalizer and are Addressable.
+	c := makeChannelWithFinalizerAndAddress()
 	c.Status.MarkProvisioned()
 	return c
 }
@@ -508,21 +535,15 @@ func makeChannelNilProvisioner() *eventingv1alpha1.Channel {
 	return c
 }
 
-func makeChannelNilRef() *eventingv1alpha1.Channel {
-	c := makeChannel()
-	c.Spec.Provisioner.Ref = nil
-	return c
-}
-
 func makeChannelWithWrongProvisionerNamespace() *eventingv1alpha1.Channel {
 	c := makeChannel()
-	c.Spec.Provisioner.Ref.Namespace = "wrong-namespace"
+	c.Spec.Provisioner.Namespace = "wrong-namespace"
 	return c
 }
 
 func makeChannelWithWrongProvisionerName() *eventingv1alpha1.Channel {
 	c := makeChannel()
-	c.Spec.Provisioner.Ref.Name = "wrong-name"
+	c.Spec.Provisioner.Name = "wrong-name"
 	return c
 }
 
@@ -575,7 +596,7 @@ func makeK8sService() *corev1.Service {
 			Namespace: cNamespace,
 			Labels: map[string]string{
 				"channel":     cName,
-				"provisioner": cpName,
+				"provisioner": ccpName,
 			},
 			OwnerReferences: []metav1.OwnerReference{
 				{
@@ -591,8 +612,8 @@ func makeK8sService() *corev1.Service {
 		Spec: corev1.ServiceSpec{
 			Ports: []corev1.ServicePort{
 				{
-					Name: portName,
-					Port: portNumber,
+					Name: util.PortName,
+					Port: util.PortNumber,
 				},
 			},
 		},
@@ -616,7 +637,7 @@ func makeVirtualService() *istiov1alpha3.VirtualService {
 			Namespace: cNamespace,
 			Labels: map[string]string{
 				"channel":     cName,
-				"provisioner": cpName,
+				"provisioner": ccpName,
 			},
 			OwnerReferences: []metav1.OwnerReference{
 				{
@@ -642,7 +663,7 @@ func makeVirtualService() *istiov1alpha3.VirtualService {
 					Destination: istiov1alpha3.Destination{
 						Host: "in-memory-channel-clusterbus.knative-eventing.svc.cluster.local",
 						Port: istiov1alpha3.PortSelector{
-							Number: portNumber,
+							Number: util.PortNumber,
 						},
 					}},
 				}},
@@ -797,7 +818,7 @@ func (p *paginatedChannelsListStruct) MockLists() []controllertesting.MockList {
 	}
 }
 
-func verifyConfigMapData() []controllertesting.MockUpdate {
+func verifyConfigMapData(expected multichannelfanout.Config) []controllertesting.MockUpdate {
 	return []controllertesting.MockUpdate{
 		func(innerClient client.Client, ctx context.Context, obj runtime.Object) (controllertesting.MockHandled, error) {
 			if cm, ok := obj.(*corev1.ConfigMap); ok {
@@ -808,7 +829,7 @@ func verifyConfigMapData() []controllertesting.MockUpdate {
 					return controllertesting.Handled,
 						fmt.Errorf("test is unable to unmarshal ConfigMap data: %v", err)
 				}
-				if diff := cmp.Diff(c, channelsConfig); diff != "" {
+				if diff := cmp.Diff(c, expected); diff != "" {
 					return controllertesting.Handled,
 						fmt.Errorf("test got unwanted ChannelsConfig (-want +got) %s", diff)
 				}
