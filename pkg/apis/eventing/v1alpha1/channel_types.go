@@ -17,6 +17,7 @@
 package v1alpha1
 
 import (
+	eventingduck "github.com/knative/eventing/pkg/apis/duck/v1alpha1"
 	"github.com/knative/pkg/apis"
 	duckv1alpha1 "github.com/knative/pkg/apis/duck/v1alpha1"
 	"github.com/knative/pkg/webhook"
@@ -29,8 +30,8 @@ import (
 // +genclient:noStatus
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
-// Channel is an abstract resource that implements the Subscribable and Sinkable
-// contracts. The Provisioner provisions infrastructure to accepts events and
+// Channel is an abstract resource that implements the Addressable contract.
+// The Provisioner provisions infrastructure to accepts events and
 // deliver to Subscriptions.
 type Channel struct {
 	metav1.TypeMeta `json:",inline"`
@@ -64,19 +65,18 @@ type ChannelSpec struct {
 	Generation int64 `json:"generation,omitempty"`
 
 	// Provisioner defines the name of the Provisioner backing this channel.
-	// TODO: +optional If missing, a default Provisioner may be selected for the Channel.
-	Provisioner *ProvisionerReference `json:"provisioner,omitempty"`
+	Provisioner *corev1.ObjectReference `json:"provisioner,omitempty"`
 
-	// Arguments defines the arguments to pass to the Provisioner which provisions
-	// this Channel.
+	// Arguments defines the arguments to pass to the Provisioner which
+	// provisions this Channel.
 	// +optional
 	Arguments *runtime.RawExtension `json:"arguments,omitempty"`
 
-	// Channel conforms to Duck type Channelable.
-	Channelable *duckv1alpha1.Channelable `json:"channelable,omitempty"`
+	// Channel conforms to Duck type Subscribable.
+	Subscribable *eventingduck.Subscribable `json:"subscribable,omitempty"`
 }
 
-var chanCondSet = duckv1alpha1.NewLivingConditionSet(ChannelConditionProvisioned, ChannelConditionSinkable, ChannelConditionSubscribable)
+var chanCondSet = duckv1alpha1.NewLivingConditionSet(ChannelConditionProvisioned, ChannelConditionAddressable)
 
 // ChannelStatus represents the current state of a Channel.
 type ChannelStatus struct {
@@ -88,13 +88,12 @@ type ChannelStatus struct {
 	// +optional
 	ObservedGeneration int64 `json:"observedGeneration,omitempty"`
 
-	// Channel is Sinkable. It currently exposes the endpoint as top-level domain
-	// that will distribute traffic over the provided targets from inside the cluster.
+	// Channel is Addressable. It currently exposes the endpoint as a
+	// fully-qualified DNS name which will distribute traffic over the
+	// provided targets from inside the cluster.
+	//
 	// It generally has the form {channel}.{namespace}.svc.cluster.local
-	Sinkable duckv1alpha1.Sinkable `json:"sinkable,omitempty"`
-
-	// Channel is Subscribable. It just points to itself
-	Subscribable duckv1alpha1.Subscribable `json:"subscribable,omitempty"`
+	Address duckv1alpha1.Addressable `json:"address,omitempty"`
 
 	// Represents the latest available observations of a channel's current state.
 	// +optional
@@ -104,21 +103,17 @@ type ChannelStatus struct {
 }
 
 const (
-	// ChannelConditionReady has status True when the Channel is ready to accept
-	// traffic.
+	// ChannelConditionReady has status True when the Channel is ready to
+	// accept traffic.
 	ChannelConditionReady = duckv1alpha1.ConditionReady
 
-	// ChannelConditionProvisioned has status True when the Channel's backing
-	// resources have been provisioned.
+	// ChannelConditionProvisioned has status True when the Channel's
+	// backing resources have been provisioned.
 	ChannelConditionProvisioned duckv1alpha1.ConditionType = "Provisioned"
 
-	// ChannelConditionSinkable has status true when this Channel meets the Sinkable contract and
-	// has a non-empty domainInternal.
-	ChannelConditionSinkable duckv1alpha1.ConditionType = "Sinkable"
-
-	// ChannelConditionSubscribable has status true when this Channel meets the Subscribable
-	// contract and has a non-empty Channelable object reference.
-	ChannelConditionSubscribable duckv1alpha1.ConditionType = "Subscribable"
+	// ChannelConditionAddressable has status true when this Channel meets
+	// the Addressable contract and has a non-empty hostname.
+	ChannelConditionAddressable duckv1alpha1.ConditionType = "Addressable"
 )
 
 // GetCondition returns the condition currently associated with the given type, or nil.
@@ -141,33 +136,19 @@ func (cs *ChannelStatus) MarkProvisioned() {
 	chanCondSet.Manage(cs).MarkTrue(ChannelConditionProvisioned)
 }
 
-// SetSubscribable makes this Channel Subscribable, by having it point at itself. The 'name' and
-// 'namespace' should be the name and namespace of the Channel this ChannelStatus is on. It also
-// sets the ChannelConditionSubscribable to true.
-func (cs *ChannelStatus) SetSubscribable(namespace, name string) {
-	if namespace != "" || name != "" {
-		cs.Subscribable.Channelable = corev1.ObjectReference{
-			Kind:       "Channel",
-			APIVersion: SchemeGroupVersion.String(),
-			Namespace:  namespace,
-			Name:       name,
-		}
-		chanCondSet.Manage(cs).MarkTrue(ChannelConditionSubscribable)
-	} else {
-		cs.Subscribable.Channelable = corev1.ObjectReference{}
-		chanCondSet.Manage(cs).MarkFalse(ChannelConditionSubscribable, "notSubscribable", "not Subscribable")
-	}
-
+// MarkNotProvisioned sets ChannelConditionProvisioned condition to False state.
+func (cs *ChannelStatus) MarkNotProvisioned(reason, messageFormat string, messageA ...interface{}) {
+	chanCondSet.Manage(cs).MarkFalse(ChannelConditionProvisioned, reason, messageFormat, messageA...)
 }
 
-// SetSinkable makes this Channel sinkable by setting the domainInternal. It also sets the
-// ChannelConditionSinkable to true.
-func (cs *ChannelStatus) SetSinkable(domainInternal string) {
-	cs.Sinkable.DomainInternal = domainInternal
-	if domainInternal != "" {
-		chanCondSet.Manage(cs).MarkTrue(ChannelConditionSinkable)
+// SetAddress makes this Channel addressable by setting the hostname. It also
+// sets the ChannelConditionAddressable to true.
+func (cs *ChannelStatus) SetAddress(hostname string) {
+	cs.Address.Hostname = hostname
+	if hostname != "" {
+		chanCondSet.Manage(cs).MarkTrue(ChannelConditionAddressable)
 	} else {
-		chanCondSet.Manage(cs).MarkFalse(ChannelConditionSinkable, "emptyDomainInternal", "domainInternal is the empty string")
+		chanCondSet.Manage(cs).MarkFalse(ChannelConditionAddressable, "emptyHostname", "hostname is the empty string")
 	}
 }
 

@@ -18,9 +18,9 @@ They differ from most Channels in that they have:
 ### Deployment steps:
 
 1. Setup [Knative Eventing](../../../DEVELOPMENT.md).
-1. Apply the 'in-memory-channel' ClusterProvisioner, Controller, and Dispatcher.
+1. Apply the 'in-memory-channel' ClusterChannelProvisioner, Controller, and Dispatcher.
      ```shell
-     ko apply -f config/providers/in-memory-channel/in-memory-channel.yaml
+     ko apply -f config/provisioners/in-memory-channel/in-memory-channel.yaml
      ````
 1. Create Channels that reference the 'in-memory-channel'.
 
@@ -31,21 +31,20 @@ They differ from most Channels in that they have:
       name: foo
     spec:
       provisioner:
-        ref:
-          apiVersion: eventing.knative.dev/v1alpha1
-          kind: ClusterProvisioner
-          name: in-memory-channel
+        apiVersion: eventing.knative.dev/v1alpha1
+        kind: ClusterChannelProvisioner
+        name: in-memory-channel
     ```
 
 ### Components
 
 The major components are:
-* ClusterProvisioner Controller
+* ClusterChannelProvisioner Controller
 * Channel Controller
 * Channel Dispatcher
 * Channel Dispatcher Config Map.
 
-The ClusterProvisioner Controller and the Channel Controller are colocated in one Pod.
+The ClusterChannelProvisioner Controller and the Channel Controller are colocated in one Pod.
 ```shell
 kubectl get deployment -n knative-eventing in-memory-channel-controller
 ```

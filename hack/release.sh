@@ -23,26 +23,26 @@ readonly EVENTING_RELEASE_GCS
 readonly EVENTING_RELEASE_GCR
 
 # Yaml files to generate, and the source config dir for them.
+declare -A COMPONENTS
+COMPONENTS=(
+  ["eventing.yaml"]="config"
+  ["in-memory-channel.yaml"]="config/provisioners/in-memory-channel"
+  ["kafka-channel.yaml"]="config/provisioners/kafka"
+)
+readonly COMPONENTS
+
 declare -A RELEASES
-RELEASES["release.yaml"]="config"
-RELEASES["release-bus-stub.yaml"]="config/buses/stub"
-RELEASES["release-bus-gcppubsub.yaml"]="config/buses/gcppubsub"
-RELEASES["release-bus-kafka.yaml"]="config/buses/kafka"
-RELEASES["release-source-k8sevents.yaml"]="pkg/sources/k8sevents"
-RELEASES["release-source-gcppubsub.yaml"]="pkg/sources/gcppubsub"
-RELEASES["release-source-github.yaml"]="pkg/sources/github"
+RELEASES=(
+  ["release.yaml"]="eventing.yaml in-memory-channel.yaml"
+)
 readonly RELEASES
 
-# Yaml files that will be also released as ClusterBuses from Buses
-readonly CLUSTERBUS_YAMLS=(
-  release-bus-stub.yaml
-  release-bus-gcppubsub.yaml
-  release-bus-kafka.yaml
-)
+# Set the repository
+export KO_DOCKER_REPO=${EVENTING_RELEASE_GCR}
 
 # Script entry point.
 
-parse_flags $@
+initialize $@
 
 set -o errexit
 set -o pipefail
@@ -51,33 +51,34 @@ run_validation_tests ./test/presubmit-tests.sh
 
 banner "Building the release"
 
-# Set the repository
-export KO_DOCKER_REPO=${EVENTING_RELEASE_GCR}
-
+echo "- Destination GCR: ${KO_DOCKER_REPO}"
 if (( PUBLISH_RELEASE )); then
-  echo "- Destination GCR: ${EVENTING_RELEASE_GCR}"
   echo "- Destination GCS: ${EVENTING_RELEASE_GCS}"
 fi
 
-# Build the release
+# Build the components
 
 all_yamls=()
 
-for yaml in "${!RELEASES[@]}"; do
-  config="${RELEASES[${yaml}]}"
+for yaml in "${!COMPONENTS[@]}"; do
+  config="${COMPONENTS[${yaml}]}"
   echo "Building Knative Eventing - ${config}"
   ko resolve ${KO_FLAGS} -f ${config}/ > ${yaml}
-  tag_images_in_yaml ${yaml} ${EVENTING_RELEASE_GCR} ${TAG}
+  tag_images_in_yaml ${yaml} ${KO_DOCKER_REPO} ${TAG}
   all_yamls+=(${yaml})
 done
 
-for yaml in ${CLUSTERBUS_YAMLS[@]}; do
-  clusterbus_yaml=${yaml/-bus-/-clusterbus-}
-  config="${RELEASES[${yaml}]}"
-  echo "Building Knative Eventing - ${config} (${clusterbus_yaml})"
-  sed -e 's/^kind: Bus$/kind: ClusterBus/g' ${yaml} > ${clusterbus_yaml}
-  tag_images_in_yaml ${clusterbus_yaml} ${EVENTING_RELEASE_GCR} ${TAG}
-  all_yamls+=(${clusterbus_yaml})
+# Assemble the release
+for yaml in "${!RELEASES[@]}"; do
+  echo "Assembling Knative Eventing - ${yaml}"
+  echo "" > ${yaml}
+  for component in ${RELEASES[${yaml}]}; do
+    echo "---" >> ${yaml}
+    echo "# ${component}" >> ${yaml}
+    cat ${component} >> ${yaml}
+  done
+  tag_images_in_yaml ${yaml} ${KO_DOCKER_REPO} ${TAG}
+  all_yamls+=(${yaml})
 done
 
 echo "New release built successfully"
@@ -92,5 +93,7 @@ for yaml in ${all_yamls[@]}; do
   echo "Publishing ${yaml}"
   publish_yaml ${yaml} ${EVENTING_RELEASE_GCS} ${TAG}
 done
+
+branch_release "Knative Eventing" "${all_yamls[*]}"
 
 echo "New release published successfully"

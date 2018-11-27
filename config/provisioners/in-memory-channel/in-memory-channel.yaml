@@ -13,13 +13,10 @@
 # limitations under the License.
 
 apiVersion: eventing.knative.dev/v1alpha1
-kind: ClusterProvisioner
+kind: ClusterChannelProvisioner
 metadata:
   name: in-memory-channel
-spec:
-  reconciles:
-    group: eventing.knative.dev/v1alpha1
-    kind: Channel
+spec: {}
 
 ---
 
@@ -40,12 +37,18 @@ rules:
       - eventing.knative.dev
     resources:
       - channels
-      - clusterprovisioners
+      - clusterchannelprovisioners
     verbs:
       - get
       - list
       - watch
       - update
+  - apiGroups:
+    - eventing.knative.dev
+    resources:
+    - channels/finalizers
+    verbs:
+    - update
   - apiGroups:
       - "" # Core API group.
     resources:
@@ -101,7 +104,7 @@ spec:
   replicas: 1
   selector:
     matchLabels: &labels
-      clusterProvisioner: in-memory-channel
+      clusterChannelProvisioner: in-memory-channel
       role: controller
   template:
     metadata:
@@ -164,7 +167,7 @@ spec:
   replicas: 1
   selector:
     matchLabels: &labels
-      clusterProvisioner: in-memory-channel
+      clusterChannelProvisioner: in-memory-channel
       role: dispatcher
   template:
     metadata:
