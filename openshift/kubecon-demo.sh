@@ -15,12 +15,11 @@ function run_demo(){
   oc adm policy add-scc-to-user privileged -z default -n myproject
 
   apply build/000-rolebinding.yaml
-  apply eventing/000-rolebinding.yaml
   
   apply build/010-build-template.yaml
   apply serving/010-service.yaml
 
-  wait_for_all_pods myproject    
+  wait_for_all_pods myproject
 
   local ip=$(oc get svc knative-ingressgateway -n istio-system -o 'jsonpath={.status.loadBalancer.ingress[0].ip}')
   local port=$(oc get svc knative-ingressgateway -n istio-system -o 'jsonpath={.spec.ports[?(@.port==80)].nodePort}')
@@ -29,12 +28,11 @@ function run_demo(){
   curl -H "Host: helloworld-openshift.myproject.example.com" "http://${ip}:${port}/health" || return 1
 
   apply eventing/010-channel.yaml
-  apply eventing/020-k8s-event-source.yaml
+  apply eventing/020-egress.yaml
+  apply eventing/021-source.yaml
   apply eventing/030-subscription.yaml
 
   wait_for_all_pods myproject  
-  
-  kubectl run busybox --image=busybox --restart=Never -- sh
 
   # Check that events arrive at the application
   wait_for_logged_events
@@ -52,7 +50,6 @@ function delete(){
 
 function delete_demo(){
   delete build/000-rolebinding.yaml
-  delete eventing/000-rolebinding.yaml
   oc delete project myproject
 }
 
@@ -62,7 +59,7 @@ function wait_for_all_pods {
 
 function wait_for_logged_events(){
   POD=$(oc get pods | grep helloworld-openshift-00001-deployment | awk '{ print $1 }')
-  timeout 300 "oc logs $POD -c user-container | grep -E \"Ce-Source: .*pods/busybox\""
+  timeout 300 "oc logs $POD -c user-container | grep 'Ce-Source:'"
 }
 
 function timeout() {
