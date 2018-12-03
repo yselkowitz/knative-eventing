@@ -22,10 +22,9 @@ function run_demo(){
   wait_for_all_pods myproject
 
   local ip=$(oc get svc knative-ingressgateway -n istio-system -o 'jsonpath={.status.loadBalancer.ingress[0].ip}')
-  local port=$(oc get svc knative-ingressgateway -n istio-system -o 'jsonpath={.spec.ports[?(@.port==80)].nodePort}')
   
   # Check that the helloworld app can server requests
-  curl -H "Host: helloworld-openshift.myproject.example.com" "http://${ip}:${port}/health" || return 1
+  curl -H "Host: helloworld-openshift.myproject.example.com" "http://${ip}/health" || return 1
 
   apply eventing/010-channel.yaml
   apply eventing/020-egress.yaml
@@ -54,7 +53,7 @@ function delete_demo(){
 }
 
 function wait_for_all_pods {
-  timeout 300 "oc get pods -n $1 2>&1 | grep -v -E '(Running|Completed|STATUS)'"
+  timeout 300 "! oc get pods -n $1 2>&1 | grep -v -E '(Running|Completed|STATUS)'"
 }
 
 function wait_for_logged_events(){
@@ -64,7 +63,7 @@ function wait_for_logged_events(){
 
 function timeout() {
   SECONDS=0; TIMEOUT=$1; shift
-  while eval $*; do
+  until eval $*; do
     sleep 5
     [[ $SECONDS -gt $TIMEOUT ]] && echo "ERROR: Timed out" && exit -1
   done
