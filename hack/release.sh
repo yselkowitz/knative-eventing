@@ -27,6 +27,7 @@ declare -A COMPONENTS
 COMPONENTS=(
   ["eventing.yaml"]="config"
   ["in-memory-channel.yaml"]="config/provisioners/in-memory-channel"
+  ["kafka.yaml"]="config/provisioners/kafka"
 )
 readonly COMPONENTS
 
@@ -70,7 +71,7 @@ done
 # Assemble the release
 for yaml in "${!RELEASES[@]}"; do
   echo "Assembling Knative Eventing - ${yaml}"
-  touch ${yaml}
+  echo "" > ${yaml}
   for component in ${RELEASES[${yaml}]}; do
     echo "---" >> ${yaml}
     echo "# ${component}" >> ${yaml}
@@ -93,6 +94,6 @@ for yaml in ${all_yamls[@]}; do
   publish_yaml ${yaml} ${EVENTING_RELEASE_GCS} ${TAG}
 done
 
-branch_release "Knative Eventing" "${all_yamls[@]}"
+branch_release "Knative Eventing" "${all_yamls[*]}"
 
 echo "New release published successfully"
