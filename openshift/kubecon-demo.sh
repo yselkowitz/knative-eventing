@@ -57,7 +57,7 @@ function wait_for_all_pods {
 }
 
 function wait_for_logged_events(){
-  POD=$(oc get pods | grep helloworld-openshift-00001-deployment | awk '{ print $1 }')
+  POD=$(oc get pods | grep helloworld-openshift-00001-deployment | awk '{ print $1 }' | awk '{ print $1 }')
   timeout 300 "oc logs $POD -c user-container | grep 'Ce-Source:'"
 }
 
