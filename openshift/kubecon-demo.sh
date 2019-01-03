@@ -85,7 +85,7 @@ function wait_for_redhat(){
 }
 
 function wait_for_dumpy_00001_to_shutdown(){
-  timeout 180 "! oc get pods | grep dumpy-00001-deployment"
+  timeout 360 "! oc get pods | grep dumpy-00001-deployment"
 }
 
 function check_no_dumpy_00001(){
