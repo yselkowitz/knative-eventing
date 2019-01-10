@@ -5,6 +5,11 @@ readonly DEMO_URL="https://raw.githubusercontent.com/openshift-cloud-functions/d
 function run_demo(){
   header "Running Knative Build/Serving/Eventing Demo"
   
+  # Shorten wait times to make CI run faster
+  oc get cm config-autoscaler -n knative-serving -o yaml | \
+  sed 's/scale-to-zero-grace-period:.*/scale-to-zero-grace-period: 30s/' | \
+  sed 's/scale-to-zero-threshold:.*/scale-to-zero-threshold: 1m/' | oc replace -f -
+
   oc import-image -n openshift golang --from=centos/go-toolset-7-centos7 --confirm
   oc import-image -n openshift golang:1.11 --from=centos/go-toolset-7-centos7 --confirm
   
@@ -85,7 +90,7 @@ function wait_for_redhat(){
 }
 
 function wait_for_dumpy_00001_to_shutdown(){
-  timeout 360 "! oc get pods | grep dumpy-00001-deployment"
+  timeout 180 "! oc get pods | grep dumpy-00001-deployment"
 }
 
 function check_no_dumpy_00001(){
