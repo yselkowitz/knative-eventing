@@ -8,7 +8,9 @@ readonly K8S_CLUSTER_OVERRIDE=$(oc config current-context | awk -F'/' '{print $2
 readonly API_SERVER=$(oc config view --minify | grep server | awk -F'//' '{print $2}' | awk -F':' '{print $1}')
 readonly INTERNAL_REGISTRY="docker-registry.default.svc:5000"
 readonly USER=$KUBE_SSH_USER #satisfy e2e_flags.go#initializeFlags()
-readonly OPENSHIFT_REGISTRY=registry.svc.ci.openshift.org
+readonly OPENSHIFT_REGISTRY="${OPENSHIFT_REGISTRY:-"registry.svc.ci.openshift.org"}"
+readonly SSH_PRIVATE_KEY="${SSH_PRIVATE_KEY:-"~/.ssh/google_compute_engine"}"
+readonly INSECURE="${INSECURE:-"false"}"
 readonly KNATIVE_EVENTING_SOURCES_RELEASE=https://knative-releases.storage.googleapis.com/eventing-sources/latest/release.yaml
 readonly EVENTING_NAMESPACE=knative-eventing
 readonly TEST_NAMESPACE=e2etest
@@ -23,7 +25,7 @@ function enable_admission_webhooks(){
   echo "API_SERVER=$API_SERVER"
   echo "KUBE_SSH_USER=$KUBE_SSH_USER"
   chmod 600 ~/.ssh/google_compute_engine
-  echo "$API_SERVER ansible_ssh_private_key_file=~/.ssh/google_compute_engine" > inventory.ini
+  echo "$API_SERVER ansible_ssh_private_key_file=${SSH_PRIVATE_KEY}" > inventory.ini
   ansible-playbook ${REPO_ROOT_DIR}/openshift/admission-webhooks.yaml -i inventory.ini -u $KUBE_SSH_USER
   rm inventory.ini
 }
@@ -135,12 +137,12 @@ function install_in_memory_channel_provisioner(){
 }
 
 function create_test_resources() {
-  echo ">> Creating imagestream tags for all test images"
-  tag_test_images test/test_images
-
   echo ">> Ensuring pods in test namespaces can access test images"
   oc policy add-role-to-group system:image-puller system:serviceaccounts:$TEST_NAMESPACE --namespace=$EVENTING_NAMESPACE
   oc policy add-role-to-group system:image-puller system:serviceaccounts:$TEST_FUNCTION_NAMESPACE --namespace=$EVENTING_NAMESPACE
+
+  echo ">> Creating imagestream tags for all test images"
+  tag_test_images test/test_images
 
   #Grant additional privileges
   oc adm policy add-scc-to-user anyuid -z default -n $TEST_FUNCTION_NAMESPACE
@@ -160,6 +162,8 @@ function resolve_resources(){
     sed -e 's%github.com/knative/eventing/pkg/controller/eventing/inmemory/controller%'"$INTERNAL_REGISTRY"'\/'"$EVENTING_NAMESPACE"'\/knative-eventing-in-memory-channel-controller%' | \
     sed -e 's/\(.* image: \)\(github.com\)\(.*\/\)\(.*\)/\1 '"$INTERNAL_REGISTRY"'\/'"$EVENTING_NAMESPACE"'\/knative-eventing-\4/' >> $resolved_file_name
   done
+
+  oc policy add-role-to-group system:image-puller system:serviceaccounts:${EVENTING_NAMESPACE} --namespace=${OPENSHIFT_BUILD_NAMESPACE}
 
   echo ">> Creating imagestream tags for images referenced in yaml files"
   IMAGE_NAMES=$(cat $resolved_file_name | grep -i "image:" | grep "$INTERNAL_REGISTRY" | awk '{print $2}' | awk -F '/' '{print $3}')
@@ -249,7 +253,7 @@ function tag_test_images() {
 function tag_built_image() {
   local remote_name=$1
   local local_name=$2
-  oc tag -n ${EVENTING_NAMESPACE} ${OPENSHIFT_REGISTRY}/${OPENSHIFT_BUILD_NAMESPACE}/stable:${remote_name} ${local_name}:latest
+  oc tag --insecure=${INSECURE} -n ${EVENTING_NAMESPACE} ${OPENSHIFT_REGISTRY}/${OPENSHIFT_BUILD_NAMESPACE}/stable:${remote_name} ${local_name}:latest
 }
 
 enable_admission_webhooks
