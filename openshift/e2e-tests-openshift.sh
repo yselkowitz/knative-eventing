@@ -4,6 +4,12 @@ source $(dirname $0)/../vendor/github.com/knative/test-infra/scripts/e2e-tests.s
 
 set -x
 
+# Using the most recent good release of eventing-sources to unblock tests. This
+# should be replaced with the commented line below when eventing-sources nightly
+# is known good again.
+readonly KNATIVE_EVENTING_SOURCES_RELEASE=https://knative-nightly.storage.googleapis.com/eventing-sources/previous/v20181205-fbac942/release.yaml
+#readonly KNATIVE_EVENTING_SOURCES_RELEASE=https://knative-nightly.storage.googleapis.com/eventing-sources/latest/release.yaml
+
 readonly K8S_CLUSTER_OVERRIDE=$(oc config current-context | awk -F'/' '{print $2}')
 readonly API_SERVER=$(oc config view --minify | grep server | awk -F'//' '{print $2}' | awk -F':' '{print $1}')
 readonly INTERNAL_REGISTRY="docker-registry.default.svc:5000"
@@ -11,7 +17,6 @@ readonly USER=$KUBE_SSH_USER #satisfy e2e_flags.go#initializeFlags()
 readonly OPENSHIFT_REGISTRY="${OPENSHIFT_REGISTRY:-"registry.svc.ci.openshift.org"}"
 readonly SSH_PRIVATE_KEY="${SSH_PRIVATE_KEY:-"~/.ssh/google_compute_engine"}"
 readonly INSECURE="${INSECURE:-"false"}"
-readonly KNATIVE_EVENTING_SOURCES_RELEASE=https://knative-releases.storage.googleapis.com/eventing-sources/latest/release.yaml
 readonly EVENTING_NAMESPACE=knative-eventing
 readonly TEST_NAMESPACE=e2etest
 readonly TEST_FUNCTION_NAMESPACE=e2etestfn3
