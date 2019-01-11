@@ -59,6 +59,7 @@ function install_istio(){
   oc adm policy add-scc-to-user anyuid -z istio-mixer-service-account -n istio-system
   oc adm policy add-scc-to-user anyuid -z istio-pilot-service-account -n istio-system
   oc adm policy add-scc-to-user anyuid -z istio-sidecar-injector-service-account -n istio-system
+  oc adm policy add-scc-to-user anyuid -z cluster-local-gateway-service-account -n istio-system
   oc adm policy add-cluster-role-to-user cluster-admin -z istio-galley-service-account -n istio-system
   
   # Deploy the latest Istio release
