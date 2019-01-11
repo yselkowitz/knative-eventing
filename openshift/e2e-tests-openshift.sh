@@ -5,12 +5,23 @@ source $(dirname $0)/kubecon-demo.sh
 
 set -x
 
+readonly SERVING_VERSION=v0.2.2
+readonly EVENTING_SOURCES_VERSION=v0.2.1
+
+readonly SERVING_BASE=https://github.com/knative/serving/releases/download/${SERVING_VERSION}
+readonly ISTIO_CRD_RELEASE=${SERVING_BASE}/istio-crds.yaml
+readonly ISTIO_RELEASE=${SERVING_BASE}/istio.yaml
+readonly SERVING_RELEASE=${SERVING_BASE}/release.yaml
+
+readonly EVENTING_SOURCES_RELEASE=https://github.com/knative/eventing-sources/releases/download/${EVENTING_SOURCES_VERSION}/release.yaml
+
 readonly K8S_CLUSTER_OVERRIDE=$(oc config current-context | awk -F'/' '{print $2}')
 readonly API_SERVER=$(oc config view --minify | grep server | awk -F'//' '{print $2}' | awk -F':' '{print $1}')
 readonly INTERNAL_REGISTRY="docker-registry.default.svc:5000"
 readonly USER=$KUBE_SSH_USER #satisfy e2e_flags.go#initializeFlags()
-readonly OPENSHIFT_REGISTRY=registry.svc.ci.openshift.org
-readonly KNATIVE_EVENTING_SOURCES_RELEASE=https://knative-releases.storage.googleapis.com/eventing-sources/latest/release.yaml
+readonly OPENSHIFT_REGISTRY="${OPENSHIFT_REGISTRY:-"registry.svc.ci.openshift.org"}"
+readonly SSH_PRIVATE_KEY="${SSH_PRIVATE_KEY:-"~/.ssh/google_compute_engine"}"
+readonly INSECURE="${INSECURE:-"false"}"
 readonly EVENTING_NAMESPACE=knative-eventing
 readonly TEST_NAMESPACE=e2etest
 readonly TEST_FUNCTION_NAMESPACE=e2etestfn3
@@ -24,7 +35,7 @@ function enable_admission_webhooks(){
   echo "API_SERVER=$API_SERVER"
   echo "KUBE_SSH_USER=$KUBE_SSH_USER"
   chmod 600 ~/.ssh/google_compute_engine
-  echo "$API_SERVER ansible_ssh_private_key_file=~/.ssh/google_compute_engine" > inventory.ini
+  echo "$API_SERVER ansible_ssh_private_key_file=${SSH_PRIVATE_KEY}" > inventory.ini
   ansible-playbook ${REPO_ROOT_DIR}/openshift/admission-webhooks.yaml -i inventory.ini -u $KUBE_SSH_USER
   rm inventory.ini
 }
@@ -58,11 +69,12 @@ function install_istio(){
   oc adm policy add-scc-to-user anyuid -z istio-mixer-service-account -n istio-system
   oc adm policy add-scc-to-user anyuid -z istio-pilot-service-account -n istio-system
   oc adm policy add-scc-to-user anyuid -z istio-sidecar-injector-service-account -n istio-system
+  oc adm policy add-scc-to-user anyuid -z cluster-local-gateway-service-account -n istio-system
   oc adm policy add-cluster-role-to-user cluster-admin -z istio-galley-service-account -n istio-system
   
   # Deploy the latest Istio release
-  oc apply -f $KNATIVE_ISTIO_CRD_YAML
-  oc apply -f $KNATIVE_ISTIO_YAML
+  oc apply -f $ISTIO_CRD_RELEASE
+  oc apply -f $ISTIO_RELEASE
 
   # Ensure the istio-sidecar-injector pod runs as privileged
   oc get cm istio-sidecar-injector -n istio-system -o yaml | sed -e 's/securityContext:/securityContext:\\n      privileged: true/' | oc replace -f -
@@ -81,7 +93,7 @@ function install_knative_serving(){
   oc adm policy add-cluster-role-to-user cluster-admin -z build-controller -n knative-build
   oc adm policy add-cluster-role-to-user cluster-admin -z controller -n knative-serving
 
-  curl -L ${KNATIVE_SERVING_RELEASE} | sed '/nodePort/d' | oc apply -f -
+  curl -L ${SERVING_RELEASE} | sed '/nodePort/d' | oc apply -f -
   
   echo ">>> Setting SSL_CERT_FILE for Knative Serving Controller"
   oc set env -n knative-serving deployment/controller SSL_CERT_FILE=/var/run/secrets/kubernetes.io/serviceaccount/service-ca.crt
@@ -97,7 +109,7 @@ function install_knative_serving(){
 
 function install_knative_eventing_sources(){
   header "Installing Knative Eventing Sources"
-  oc apply -f ${KNATIVE_EVENTING_SOURCES_RELEASE}
+  oc apply -f ${EVENTING_SOURCES_RELEASE}
   wait_until_pods_running knative-sources || return 1
 }
 
@@ -136,12 +148,12 @@ function install_in_memory_channel_provisioner(){
 }
 
 function create_test_resources() {
-  echo ">> Creating imagestream tags for all test images"
-  tag_test_images test/test_images
-
   echo ">> Ensuring pods in test namespaces can access test images"
   oc policy add-role-to-group system:image-puller system:serviceaccounts:$TEST_NAMESPACE --namespace=$EVENTING_NAMESPACE
   oc policy add-role-to-group system:image-puller system:serviceaccounts:$TEST_FUNCTION_NAMESPACE --namespace=$EVENTING_NAMESPACE
+
+  echo ">> Creating imagestream tags for all test images"
+  tag_test_images test/test_images
 
   #Grant additional privileges
   oc adm policy add-scc-to-user anyuid -z default -n $TEST_FUNCTION_NAMESPACE
@@ -161,6 +173,8 @@ function resolve_resources(){
     sed -e 's%github.com/knative/eventing/pkg/controller/eventing/inmemory/controller%'"$INTERNAL_REGISTRY"'\/'"$EVENTING_NAMESPACE"'\/knative-eventing-in-memory-channel-controller%' | \
     sed -e 's/\(.* image: \)\(github.com\)\(.*\/\)\(.*\)/\1 '"$INTERNAL_REGISTRY"'\/'"$EVENTING_NAMESPACE"'\/knative-eventing-\4/' >> $resolved_file_name
   done
+
+  oc policy add-role-to-group system:image-puller system:serviceaccounts:${EVENTING_NAMESPACE} --namespace=${OPENSHIFT_BUILD_NAMESPACE}
 
   echo ">> Creating imagestream tags for images referenced in yaml files"
   IMAGE_NAMES=$(cat $resolved_file_name | grep -i "image:" | grep "$INTERNAL_REGISTRY" | awk '{print $2}' | awk -F '/' '{print $3}')
@@ -195,13 +209,13 @@ function run_e2e_tests(){
 
 function delete_istio_openshift(){
   echo ">> Bringing down Istio"
-  oc delete --ignore-not-found=true -f ${KNATIVE_ISTIO_CRD_YAML}
-  oc delete --ignore-not-found=true -f ${KNATIVE_ISTIO_YAML}
+  oc delete --ignore-not-found=true -f $ISTIO_RELEASE
+  oc delete --ignore-not-found=true -f $ISTIO_CRD_RELEASE
 }
 
 function delete_serving_openshift() {
   echo ">> Bringing down Serving"
-  oc delete --ignore-not-found=true -f ${KNATIVE_SERVING_RELEASE}
+  oc delete --ignore-not-found=true -f $SERVING_RELEASE
 }
 
 function delete_test_namespace(){
@@ -215,7 +229,7 @@ function delete_test_namespace(){
 
 function delete_knative_eventing_sources(){
   header "Brinding down Knative Eventing Sources"
-  oc delete --ignore-not-found=true -f ${KNATIVE_EVENTING_SOURCES_RELEASE}
+  oc delete --ignore-not-found=true -f $EVENTING_SOURCES_RELEASE
 }
 
 function delete_knative_eventing(){
@@ -251,7 +265,7 @@ function tag_test_images() {
 function tag_built_image() {
   local remote_name=$1
   local local_name=$2
-  oc tag -n ${EVENTING_NAMESPACE} ${OPENSHIFT_REGISTRY}/${OPENSHIFT_BUILD_NAMESPACE}/stable:${remote_name} ${local_name}:latest
+  oc tag --insecure=${INSECURE} -n ${EVENTING_NAMESPACE} ${OPENSHIFT_REGISTRY}/${OPENSHIFT_BUILD_NAMESPACE}/stable:${remote_name} ${local_name}:latest
 }
 
 enable_admission_webhooks
