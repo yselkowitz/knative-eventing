@@ -6,39 +6,30 @@ import (
 	"go.uber.org/zap"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/equality"
-	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	runtimeClient "sigs.k8s.io/controller-runtime/pkg/client"
 
+	"fmt"
+
 	eventingv1alpha1 "github.com/knative/eventing/pkg/apis/eventing/v1alpha1"
-	"github.com/knative/eventing/pkg/controller"
 	"github.com/knative/eventing/pkg/system"
 	"github.com/knative/pkg/logging"
 )
 
 func CreateDispatcherService(ctx context.Context, client runtimeClient.Client, ccp *eventingv1alpha1.ClusterChannelProvisioner) (*corev1.Service, error) {
-	svcName := controller.ClusterBusDispatcherServiceName(ccp.Name)
 	svcKey := types.NamespacedName{
 		Namespace: system.Namespace,
-		Name:      svcName,
+		Name:      channelDispatcherServiceName(ccp.Name),
 	}
-	svc := &corev1.Service{}
-	err := client.Get(ctx, svcKey, svc)
-
-	if errors.IsNotFound(err) {
-		svc = newDispatcherService(ccp)
-		err = client.Create(ctx, svc)
+	getSvc := func() (*corev1.Service, error) {
+		svc := &corev1.Service{}
+		err := client.Get(ctx, svcKey, svc)
+		return svc, err
 	}
-
-	// If an error occurred in either Get or Create, we need to reconcile again.
-	if err != nil {
-		return nil, err
-	}
-
-	return svc, nil
+	return createK8sService(ctx, client, getSvc, newDispatcherService(ccp))
 }
 
 func UpdateClusterChannelProvisionerStatus(ctx context.Context, client runtimeClient.Client, u *eventingv1alpha1.ClusterChannelProvisioner) error {
@@ -63,7 +54,7 @@ func newDispatcherService(ccp *eventingv1alpha1.ClusterChannelProvisioner) *core
 	labels := DispatcherLabels(ccp.Name)
 	return &corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      controller.ClusterBusDispatcherServiceName(ccp.Name),
+			Name:      channelDispatcherServiceName(ccp.Name),
 			Namespace: system.Namespace,
 			Labels:    labels,
 			OwnerReferences: []metav1.OwnerReference{
@@ -90,6 +81,10 @@ func newDispatcherService(ccp *eventingv1alpha1.ClusterChannelProvisioner) *core
 func DispatcherLabels(ccpName string) map[string]string {
 	return map[string]string{
 		"clusterChannelProvisioner": ccpName,
-		"role": "dispatcher",
+		"role":                      "dispatcher",
 	}
+}
+
+func channelDispatcherServiceName(ccpName string) string {
+	return fmt.Sprintf("%s-dispatcher", ccpName)
 }

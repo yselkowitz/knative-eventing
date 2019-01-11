@@ -26,6 +26,11 @@ spec:
     - all
     - knative
     - eventing
+    - provisioner
     shortNames:
     - ccp
   scope: Cluster
+  # This is done so that metadata.generation will start incrementing
+  # in Kubernetes v1.11+
+  subresources:
+    status: {}
