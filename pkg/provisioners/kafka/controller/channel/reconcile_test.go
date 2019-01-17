@@ -22,8 +22,15 @@ import (
 	"fmt"
 	"testing"
 
+	"sigs.k8s.io/controller-runtime/pkg/reconcile"
+
 	"github.com/Shopify/sarama"
 	"github.com/google/go-cmp/cmp"
+	eventingv1alpha1 "github.com/knative/eventing/pkg/apis/eventing/v1alpha1"
+	controllertesting "github.com/knative/eventing/pkg/controller/testing"
+	"github.com/knative/eventing/pkg/provisioners"
+	util "github.com/knative/eventing/pkg/provisioners"
+	"github.com/knative/eventing/pkg/provisioners/kafka/controller"
 	duckv1alpha1 "github.com/knative/pkg/apis/duck/v1alpha1"
 	istiov1alpha3 "github.com/knative/pkg/apis/istio/v1alpha3"
 	corev1 "k8s.io/api/core/v1"
@@ -32,19 +39,13 @@ import (
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/tools/record"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/reconcile"
-
-	eventingv1alpha1 "github.com/knative/eventing/pkg/apis/eventing/v1alpha1"
-	controllertesting "github.com/knative/eventing/pkg/controller/testing"
-	"github.com/knative/eventing/pkg/provisioners"
-	util "github.com/knative/eventing/pkg/provisioners"
-	"github.com/knative/eventing/pkg/provisioners/kafka/controller"
 )
 
 const (
 	channelName                   = "test-channel"
-	clusterChannelProvisionerName = "kafka-channel"
+	clusterChannelProvisionerName = "kafka"
 	testNS                        = "test-namespace"
+	topicPrefix                   = "knative-eventing-channel"
 	testUID                       = "test-uid"
 	argumentNumPartitions         = "NumPartitions"
 )
@@ -53,6 +54,10 @@ var (
 	truePointer = true
 
 	deletedTs = metav1.Now().Rfc3339Copy()
+
+	// serviceAddress is the address of the K8s Service. It uses a GeneratedName and the fake client
+	// does not fill in Name, so the name is the empty string.
+	serviceAddress = fmt.Sprintf("%s.%s.svc.cluster.local", "", testNS)
 )
 
 func init() {
@@ -126,18 +131,29 @@ func (ca *mockClusterAdmin) DeleteACL(filter sarama.AclFilter, validateOnly bool
 
 var testCases = []controllertesting.TestCase{
 	{
-		Name: "new channel with valid provisioner: adds provisioned status",
+		Name: "new channel with valid provisioner: adds finalizer",
 		InitialState: []runtime.Object{
 			getNewClusterChannelProvisioner(clusterChannelProvisionerName, true),
 			getNewChannel(channelName, clusterChannelProvisionerName),
 			makeVirtualService(),
 		},
-		ReconcileKey: fmt.Sprintf("%s/%s", testNS, channelName),
-		WantResult:   reconcile.Result{},
+		WantResult: reconcile.Result{
+			Requeue: true,
+		},
+		WantPresent: []runtime.Object{
+			getNewChannelWithStatusAndFinalizer(channelName, clusterChannelProvisionerName),
+		},
+	},
+	{
+		Name: "new channel with valid provisioner and finalizer: adds provisioned status",
+		InitialState: []runtime.Object{
+			getNewClusterChannelProvisioner(clusterChannelProvisionerName, true),
+			getNewChannelWithStatusAndFinalizer(channelName, clusterChannelProvisionerName),
+			makeVirtualService(),
+		},
 		WantPresent: []runtime.Object{
 			getNewChannelProvisionedStatus(channelName, clusterChannelProvisionerName),
 		},
-		IgnoreTimes: true,
 	},
 	{
 		Name: "new channel with provisioner not ready: error",
@@ -145,24 +161,18 @@ var testCases = []controllertesting.TestCase{
 			getNewClusterChannelProvisioner(clusterChannelProvisionerName, false),
 			getNewChannel(channelName, clusterChannelProvisionerName),
 		},
-		ReconcileKey: fmt.Sprintf("%s/%s", testNS, channelName),
-		WantResult:   reconcile.Result{},
-		WantErrMsg:   "ClusterChannelProvisioner " + clusterChannelProvisionerName + " is not ready",
+		WantErrMsg: "ClusterChannelProvisioner " + clusterChannelProvisionerName + " is not ready",
 		WantPresent: []runtime.Object{
 			getNewChannelNotProvisionedStatus(channelName, clusterChannelProvisionerName,
 				"ClusterChannelProvisioner "+clusterChannelProvisionerName+" is not ready"),
 		},
-		IgnoreTimes: true,
 	},
 	{
 		Name: "new channel with missing provisioner: error",
 		InitialState: []runtime.Object{
 			getNewChannel(channelName, clusterChannelProvisionerName),
 		},
-		ReconcileKey: fmt.Sprintf("%s/%s", testNS, channelName),
-		WantResult:   reconcile.Result{},
-		WantErrMsg:   "clusterchannelprovisioners.eventing.knative.dev \"" + clusterChannelProvisionerName + "\" not found",
-		IgnoreTimes:  true,
+		WantErrMsg: "clusterchannelprovisioners.eventing.knative.dev \"" + clusterChannelProvisionerName + "\" not found",
 	},
 	{
 		Name: "new channel with provisioner not managed by this controller: skips channel",
@@ -171,32 +181,23 @@ var testCases = []controllertesting.TestCase{
 			getNewClusterChannelProvisioner("not-our-provisioner", true),
 			getNewClusterChannelProvisioner(clusterChannelProvisionerName, true),
 		},
-		ReconcileKey: fmt.Sprintf("%s/%s", testNS, channelName),
-		WantResult:   reconcile.Result{},
 		WantPresent: []runtime.Object{
 			getNewChannel(channelName, "not-our-provisioner"),
 		},
-		IgnoreTimes: true,
 	},
 	{
 		Name: "new channel with missing provisioner reference: skips channel",
 		InitialState: []runtime.Object{
 			getNewChannelNoProvisioner(channelName),
 		},
-		ReconcileKey: fmt.Sprintf("%s/%s", testNS, channelName),
-		WantResult:   reconcile.Result{},
 		WantPresent: []runtime.Object{
 			getNewChannelNoProvisioner(channelName),
 		},
-		IgnoreTimes: true,
 	},
 	{
 		Name:         "channel not found",
 		InitialState: []runtime.Object{},
-		ReconcileKey: fmt.Sprintf("%s/%s", testNS, channelName),
-		WantResult:   reconcile.Result{},
 		WantPresent:  []runtime.Object{},
-		IgnoreTimes:  true,
 	},
 	{
 		Name: "error fetching channel",
@@ -204,9 +205,8 @@ var testCases = []controllertesting.TestCase{
 			getNewClusterChannelProvisioner(clusterChannelProvisionerName, true),
 			getNewChannel(channelName, clusterChannelProvisionerName),
 		},
-		Mocks:        mockFetchError,
-		ReconcileKey: fmt.Sprintf("%s/%s", testNS, channelName),
-		WantErrMsg:   "error fetching",
+		Mocks:      mockFetchError,
+		WantErrMsg: "error fetching",
 		WantPresent: []runtime.Object{
 			getNewClusterChannelProvisioner(clusterChannelProvisionerName, true),
 			getNewChannel(channelName, clusterChannelProvisionerName),
@@ -218,10 +218,7 @@ var testCases = []controllertesting.TestCase{
 			getNewClusterChannelProvisioner(clusterChannelProvisionerName, true),
 			getNewChannelDeleted(channelName, clusterChannelProvisionerName),
 		},
-		ReconcileKey: fmt.Sprintf("%s/%s", testNS, channelName),
-		WantResult:   reconcile.Result{},
-		WantPresent:  []runtime.Object{},
-		IgnoreTimes:  true,
+		WantPresent: []runtime.Object{},
 	},
 }
 
@@ -229,6 +226,9 @@ func TestAllCases(t *testing.T) {
 	recorder := record.NewBroadcaster().NewRecorder(scheme.Scheme, corev1.EventSource{Component: controllerAgentName})
 
 	for _, tc := range testCases {
+		tc.ReconcileKey = fmt.Sprintf("%s/%s", testNS, channelName)
+		tc.IgnoreTimes = true
+
 		c := tc.GetClient()
 		logger := provisioners.NewProvisionerLoggerFromConfig(provisioners.NewLoggingConfig())
 		r := &reconciler{
@@ -255,7 +255,7 @@ func TestProvisionChannel(t *testing.T) {
 		{
 			name:          "provision with no channel arguments - uses default",
 			c:             getNewChannel(channelName, clusterChannelProvisionerName),
-			wantTopicName: fmt.Sprintf("%s.%s", testNS, channelName),
+			wantTopicName: fmt.Sprintf("%s.%s.%s", topicPrefix, testNS, channelName),
 			wantTopicDetail: &sarama.TopicDetail{
 				ReplicationFactor: 1,
 				NumPartitions:     1,
@@ -264,7 +264,7 @@ func TestProvisionChannel(t *testing.T) {
 		{
 			name:          "provision with unknown channel arguments - uses default",
 			c:             getNewChannelWithArgs(channelName, map[string]interface{}{"testing": "testing"}),
-			wantTopicName: fmt.Sprintf("%s.%s", testNS, channelName),
+			wantTopicName: fmt.Sprintf("%s.%s.%s", topicPrefix, testNS, channelName),
 			wantTopicDetail: &sarama.TopicDetail{
 				ReplicationFactor: 1,
 				NumPartitions:     1,
@@ -273,6 +273,11 @@ func TestProvisionChannel(t *testing.T) {
 		{
 			name:      "provision with invalid channel arguments - errors",
 			c:         getNewChannelWithArgs(channelName, map[string]interface{}{argumentNumPartitions: "invalid"}),
+			wantError: fmt.Sprintf("error unmarshalling arguments: json: cannot unmarshal string into Go struct field channelArgs.%s of type int32", argumentNumPartitions),
+		},
+		{
+			name:      "provision with nil channel arguments - errors",
+			c:         getNewChannelWithArgs(channelName, map[string]interface{}{argumentNumPartitions: "nil"}),
 			wantError: fmt.Sprintf("error unmarshalling arguments: json: cannot unmarshal string into Go struct field channelArgs.%s of type int32", argumentNumPartitions),
 		},
 		{
@@ -289,7 +294,7 @@ func TestProvisionChannel(t *testing.T) {
 		{
 			name:          "provision with valid channel arguments",
 			c:             getNewChannelWithArgs(channelName, map[string]interface{}{argumentNumPartitions: 2}),
-			wantTopicName: fmt.Sprintf("%s.%s", testNS, channelName),
+			wantTopicName: fmt.Sprintf("%s.%s.%s", topicPrefix, testNS, channelName),
 			wantTopicDetail: &sarama.TopicDetail{
 				ReplicationFactor: 1,
 				NumPartitions:     2,
@@ -298,7 +303,7 @@ func TestProvisionChannel(t *testing.T) {
 		{
 			name:          "provision but topic already exists - no error",
 			c:             getNewChannelWithArgs(channelName, map[string]interface{}{argumentNumPartitions: 2}),
-			wantTopicName: fmt.Sprintf("%s.%s", testNS, channelName),
+			wantTopicName: fmt.Sprintf("%s.%s.%s", topicPrefix, testNS, channelName),
 			wantTopicDetail: &sarama.TopicDetail{
 				ReplicationFactor: 1,
 				NumPartitions:     2,
@@ -308,7 +313,7 @@ func TestProvisionChannel(t *testing.T) {
 		{
 			name:          "provision but error creating topic",
 			c:             getNewChannelWithArgs(channelName, map[string]interface{}{argumentNumPartitions: 2}),
-			wantTopicName: fmt.Sprintf("%s.%s", testNS, channelName),
+			wantTopicName: fmt.Sprintf("%s.%s.%s", topicPrefix, testNS, channelName),
 			wantTopicDetail: &sarama.TopicDetail{
 				ReplicationFactor: 1,
 				NumPartitions:     2,
@@ -352,20 +357,20 @@ func TestDeprovisionChannel(t *testing.T) {
 		{
 			name:          "deprovision channel - unknown error",
 			c:             getNewChannel(channelName, clusterChannelProvisionerName),
-			wantTopicName: fmt.Sprintf("%s.%s", testNS, channelName),
+			wantTopicName: fmt.Sprintf("%s.%s.%s", topicPrefix, testNS, channelName),
 			mockError:     fmt.Errorf("unknown sarama error"),
 			wantError:     "unknown sarama error",
 		},
 		{
 			name:          "deprovision channel - topic already deleted",
 			c:             getNewChannel(channelName, clusterChannelProvisionerName),
-			wantTopicName: fmt.Sprintf("%s.%s", testNS, channelName),
+			wantTopicName: fmt.Sprintf("%s.%s.%s", topicPrefix, testNS, channelName),
 			mockError:     sarama.ErrUnknownTopicOrPartition,
 		},
 		{
 			name:          "deprovision channel - success",
 			c:             getNewChannel(channelName, clusterChannelProvisionerName),
-			wantTopicName: fmt.Sprintf("%s.%s", testNS, channelName),
+			wantTopicName: fmt.Sprintf("%s.%s.%s", topicPrefix, testNS, channelName),
 		}}
 
 	for _, tc := range deprovisionTestCases {
@@ -420,6 +425,18 @@ func getNewChannel(name, provisioner string) *eventingv1alpha1.Channel {
 	return channel
 }
 
+func getNewChannelWithFinalizer(name, provisioner string) *eventingv1alpha1.Channel {
+	c := getNewChannel(name, provisioner)
+	util.AddFinalizer(c, finalizerName)
+	return c
+}
+
+func getNewChannelWithStatusAndFinalizer(name, provisioner string) *eventingv1alpha1.Channel {
+	c := getNewChannelWithFinalizer(name, provisioner)
+	c.Status.InitializeConditions()
+	return c
+}
+
 func getNewChannelWithArgs(name string, args map[string]interface{}) *eventingv1alpha1.Channel {
 	c := getNewChannelNoProvisioner(name)
 	bytes, _ := json.Marshal(args)
@@ -432,7 +449,7 @@ func getNewChannelWithArgs(name string, args map[string]interface{}) *eventingv1
 func getNewChannelProvisionedStatus(name, provisioner string) *eventingv1alpha1.Channel {
 	c := getNewChannel(name, provisioner)
 	c.Status.InitializeConditions()
-	c.Status.SetAddress(fmt.Sprintf("%s-channel.%s.svc.cluster.local", c.Name, c.Namespace))
+	c.Status.SetAddress(serviceAddress)
 	c.Status.MarkProvisioned()
 	c.Finalizers = []string{finalizerName}
 	return c
@@ -512,7 +529,7 @@ func makeVirtualService() *istiov1alpha3.VirtualService {
 		},
 		Spec: istiov1alpha3.VirtualServiceSpec{
 			Hosts: []string{
-				fmt.Sprintf("%s-channel.%s.svc.cluster.local", channelName, testNS),
+				serviceAddress,
 				fmt.Sprintf("%s.%s.channels.cluster.local", channelName, testNS),
 			},
 			Http: []istiov1alpha3.HTTPRoute{{
