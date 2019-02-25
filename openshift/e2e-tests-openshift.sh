@@ -5,6 +5,7 @@ source $(dirname $0)/kubecon-demo.sh
 
 set -x
 
+readonly BUILD_VERSION=v0.3.0
 readonly SERVING_VERSION=v0.3.0
 readonly EVENTING_SOURCES_VERSION=v0.3.0
 
@@ -12,7 +13,7 @@ readonly SERVING_BASE=https://github.com/knative/serving/releases/download/${SER
 readonly ISTIO_CRD_RELEASE=${SERVING_BASE}/istio-crds.yaml
 readonly ISTIO_RELEASE=${SERVING_BASE}/istio.yaml
 readonly SERVING_RELEASE=${SERVING_BASE}/serving.yaml
-
+readonly BUILD_RELEASE=https://github.com/knative/build/releases/download/${BUILD_VERSION}/release.yaml
 readonly EVENTING_SOURCES_RELEASE=https://github.com/knative/eventing-sources/releases/download/${EVENTING_SOURCES_VERSION}/release.yaml
 
 readonly K8S_CLUSTER_OVERRIDE=$(oc config current-context | awk -F'/' '{print $2}')
@@ -55,14 +56,25 @@ function install_istio(){
   header "Istio Installed successfully"
 }
 
+function install_knative_build(){
+  header "Installing Knative Build"
+
+  oc adm policy add-scc-to-user anyuid -z build-controller -n knative-build
+  oc adm policy add-cluster-role-to-user cluster-admin -z build-controller -n knative-build
+
+  oc apply -f $BUILD_RELEASE
+
+  wait_until_pods_running knative-build || return 1
+  header "Knative Build installed successfully"
+}
+
+
 function install_knative_serving(){
   header "Installing Knative Serving"
 
   # Grant the necessary privileges to the service accounts Knative will use:
-  oc adm policy add-scc-to-user anyuid -z build-controller -n knative-build
   oc adm policy add-scc-to-user anyuid -z controller -n knative-serving
   oc adm policy add-scc-to-user anyuid -z autoscaler -n knative-serving
-  oc adm policy add-cluster-role-to-user cluster-admin -z build-controller -n knative-build
   oc adm policy add-cluster-role-to-user cluster-admin -z controller -n knative-serving
 
   curl -L ${SERVING_RELEASE} | sed '/nodePort/d' | oc apply -f -
@@ -73,10 +85,9 @@ function install_knative_serving(){
   echo ">> Patching knative-ingressgateway"
   oc patch hpa -n istio-system knative-ingressgateway --patch '{"spec": {"maxReplicas": 1}}'
 
-  wait_until_pods_running knative-build || return 1
   wait_until_pods_running knative-serving || return 1
   wait_until_service_has_external_ip istio-system knative-ingressgateway || fail_test "Ingress has no external IP"
-  header "Knative Installed successfully"
+  header "Knative Serving installed successfully"
 }
 
 function install_knative_eventing_sources(){
@@ -190,6 +201,11 @@ function delete_serving_openshift() {
   oc delete --ignore-not-found=true -f $SERVING_RELEASE
 }
 
+function delete_build_openshift() {
+  echo ">> Bringing down Build"
+  oc delete --ignore-not-found=true -f $BUILD_RELEASE
+}
+
 function delete_test_namespace(){
   echo ">> Deleting test namespace $TEST_NAMESPACE"
   oc adm policy remove-scc-from-user privileged -z default -n $TEST_NAMESPACE
@@ -221,6 +237,7 @@ function teardown() {
   delete_knative_eventing
   delete_knative_eventing_sources
   delete_serving_openshift
+  delete_build_openshift
   delete_istio_openshift
 }
 
@@ -243,6 +260,8 @@ function tag_built_image() {
 install_istio
 
 enable_docker_schema2
+
+install_knative_build
 
 install_knative_serving
 
