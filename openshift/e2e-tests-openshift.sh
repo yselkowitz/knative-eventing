@@ -67,7 +67,7 @@ function install_knative_serving(){
 
   curl -L ${SERVING_RELEASE} | sed '/nodePort/d' | oc apply -f -
   
-  oc -n ${SERVING_NAMESPACE} get cm config-controller -oyaml | \
+  oc -n knative-serving get cm config-controller -oyaml | \
   sed "s/\(^ *registriesSkippingTagResolving.*$\)/\1,image-registry.openshift-image-registry.svc:5000/" | oc apply -f -
 
   echo ">> Patching knative-ingressgateway"
