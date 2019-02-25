@@ -21,7 +21,7 @@ function run_demo(){
 
   wait_for_all_pods myproject || return 1
 
-  local ip=$(oc get svc knative-ingressgateway -n istio-system -o 'jsonpath={.status.loadBalancer.ingress[0].ip}')
+  local ip=$(oc get svc knative-ingressgateway -n istio-system -o 'jsonpath={.status.loadBalancer.ingress[0].hostname}')
   
   wait_for_redhat $ip || return 1
 
