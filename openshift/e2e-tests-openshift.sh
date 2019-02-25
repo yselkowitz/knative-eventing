@@ -11,7 +11,7 @@ readonly EVENTING_SOURCES_VERSION=v0.3.0
 readonly SERVING_BASE=https://github.com/knative/serving/releases/download/${SERVING_VERSION}
 readonly ISTIO_CRD_RELEASE=${SERVING_BASE}/istio-crds.yaml
 readonly ISTIO_RELEASE=${SERVING_BASE}/istio.yaml
-readonly SERVING_RELEASE=${SERVING_BASE}/release.yaml
+readonly SERVING_RELEASE=${SERVING_BASE}/serving.yaml
 
 readonly EVENTING_SOURCES_RELEASE=https://github.com/knative/eventing-sources/releases/download/${EVENTING_SOURCES_VERSION}/release.yaml
 
