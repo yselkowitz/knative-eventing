@@ -23,8 +23,13 @@ import (
 	servingv1alpha1 "github.com/knative/serving/pkg/apis/serving/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
+
+// Default for user containers in e2e tests. This value is lower than the general
+// Knative's default so as to run more effectively in CI with limited resources.
+const defaultRequestCPU = "50m"
 
 // Route returns a Route object in namespace
 func Route(name string, namespace string, configName string) *servingv1alpha1.Route {
@@ -60,6 +65,11 @@ func Configuration(name string, namespace string, imagePath string) *servingv1al
 				Spec: servingv1alpha1.RevisionSpec{
 					Container: corev1.Container{
 						Image: imagePath,
+						Resources: corev1.ResourceRequirements{
+							Requests: corev1.ResourceList{
+								corev1.ResourceCPU: resource.MustParse(defaultRequestCPU),
+							},
+						},
 					},
 				},
 			},
@@ -186,6 +196,11 @@ func NGinxPod(namespace string) *corev1.Pod {
 					Ports: []corev1.ContainerPort{
 						{
 							ContainerPort: 80,
+						},
+					},
+					Resources: corev1.ResourceRequirements{
+						Requests: corev1.ResourceList{
+							corev1.ResourceCPU: resource.MustParse(defaultRequestCPU),
 						},
 					},
 				},

@@ -1,6 +1,6 @@
 #!/bin/bash
 
-readonly DEMO_URL="https://raw.githubusercontent.com/openshift-cloud-functions/demos/master/knative-kubecon"
+readonly DEMO_URL="https://raw.githubusercontent.com/mgencur/demos/ocp4_modifications/knative-kubecon"
 
 function run_demo(){
   header "Running Knative Build/Serving/Eventing Demo"
@@ -71,7 +71,7 @@ function delete_demo(){
 }
 
 function wait_for_all_pods {
-  timeout 300 "! oc get pods -n $1 2>&1 | grep -v -E '(Running|Completed|STATUS)'"
+  timeout 600 "! oc get pods -n $1 2>&1 | grep -v -E '(Running|Completed|STATUS)'"
 }
 
 function wait_for_logged_events(){
@@ -85,7 +85,7 @@ function wait_for_redhat(){
 }
 
 function wait_for_dumpy_00001_to_shutdown(){
-  timeout 480 "! oc get pods | grep dumpy-00001-deployment"
+  timeout 600 "! oc get pods | grep dumpy-00001-deployment"
 }
 
 function check_no_dumpy_00001(){
