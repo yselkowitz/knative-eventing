@@ -265,9 +265,9 @@ install_knative_build
 
 install_knative_serving
 
-install_knative_eventing_sources
-
 install_knative_eventing
+
+install_knative_eventing_sources
 
 install_in_memory_channel_provisioner
 
