@@ -57,7 +57,10 @@ function run_demo(){
 
 function apply(){
   local yaml_path=$1
-  curl -L ${DEMO_URL}/${yaml_path} | oc apply -f -
+  curl -L ${DEMO_URL}/${yaml_path} |\
+  sed "/container\:/ a \
+\            resources:\n\              requests:\n\                cpu: 50m" |\
+  oc apply -f -
 }
 
 function delete(){
