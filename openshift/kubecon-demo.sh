@@ -1,6 +1,6 @@
 #!/bin/bash
 
-readonly DEMO_URL="https://raw.githubusercontent.com/mgencur/demos/ocp4_modifications/knative-kubecon"
+readonly DEMO_URL="https://raw.githubusercontent.com/openshift-cloud-functions/demos/ocp4/knative-kubecon"
 
 function run_demo(){
   header "Running Knative Build/Serving/Eventing Demo"
