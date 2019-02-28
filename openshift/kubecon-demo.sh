@@ -84,7 +84,7 @@ function wait_for_logged_events(){
 
 function wait_for_redhat(){
   # Check that the app can server requests
-  timeout 60 "echo \$(curl -H 'Host: dumpy.myproject.example.com' http://${1}/health) | grep 888"
+  timeout 60 "echo \$(curl -v -H 'Host: dumpy.myproject.example.com' http://${1}/health) | grep 888"
 }
 
 function wait_for_dumpy_00001_to_shutdown(){
