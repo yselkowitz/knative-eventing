@@ -10,8 +10,7 @@ readonly SERVING_VERSION=v0.3.0
 readonly EVENTING_SOURCES_VERSION=v0.3.0
 
 readonly SERVING_BASE=https://github.com/knative/serving/releases/download/${SERVING_VERSION}
-readonly ISTIO_CRD_RELEASE=${SERVING_BASE}/istio-crds.yaml
-readonly ISTIO_RELEASE=${SERVING_BASE}/istio.yaml
+readonly MAISTRA_VERSION="0.6"
 readonly SERVING_RELEASE=${SERVING_BASE}/serving.yaml
 readonly BUILD_RELEASE=https://github.com/knative/build/releases/download/${BUILD_VERSION}/release.yaml
 readonly EVENTING_SOURCES_RELEASE=https://github.com/knative/eventing-sources/releases/download/${EVENTING_SOURCES_VERSION}/release.yaml
@@ -28,31 +27,72 @@ readonly TEST_FUNCTION_NAMESPACE=e2etestfn3
 
 env
 
+# Loops until duration (car) is exceeded or command (cdr) returns non-zero
+function timeout() {
+  SECONDS=0; TIMEOUT=$1; shift
+  while eval $*; do
+    sleep 5
+    [[ $SECONDS -gt $TIMEOUT ]] && echo "ERROR: Timed out" && return 1
+  done
+  return 0
+}
+
+function patch_istio_for_knative(){
+  local sidecar_config=$(oc get configmap -n istio-system istio-sidecar-injector -o yaml)
+  if [[ -z "${sidecar_config}" ]]; then
+    return 1
+  fi
+  echo "${sidecar_config}" | grep lifecycle
+  if [[ $? -eq 1 ]]; then
+    echo "Patching Istio's preStop hook for graceful shutdown"
+    echo "${sidecar_config}" | sed 's/\(name: istio-proxy\)/\1\\n    lifecycle:\\n      preStop:\\n        exec:\\n          command: [\\"sh\\", \\"-c\\", \\"sleep 20; while [ $(netstat -plunt | grep tcp | grep -v envoy | wc -l | xargs) -ne 0 ]; do sleep 1; done\\"]/' | oc replace -f -
+    oc delete pod -n istio-system -l istio=sidecar-injector
+    wait_until_pods_running istio-system || return 1
+  fi
+  return 0
+}
+
 function install_istio(){
   header "Installing Istio"
-  # Grant the necessary privileges to the service accounts Istio will use:
-  oc adm policy add-scc-to-user anyuid -z istio-ingress-service-account -n istio-system
-  oc adm policy add-scc-to-user anyuid -z default -n istio-system
-  oc adm policy add-scc-to-user anyuid -z prometheus -n istio-system
-  oc adm policy add-scc-to-user anyuid -z istio-egressgateway-service-account -n istio-system
-  oc adm policy add-scc-to-user anyuid -z istio-citadel-service-account -n istio-system
-  oc adm policy add-scc-to-user anyuid -z istio-ingressgateway-service-account -n istio-system
-  oc adm policy add-scc-to-user anyuid -z istio-cleanup-old-ca-service-account -n istio-system
-  oc adm policy add-scc-to-user anyuid -z istio-mixer-post-install-account -n istio-system
-  oc adm policy add-scc-to-user anyuid -z istio-mixer-service-account -n istio-system
-  oc adm policy add-scc-to-user anyuid -z istio-pilot-service-account -n istio-system
-  oc adm policy add-scc-to-user anyuid -z istio-sidecar-injector-service-account -n istio-system
-  oc adm policy add-scc-to-user anyuid -z cluster-local-gateway-service-account -n istio-system
-  oc adm policy add-cluster-role-to-user cluster-admin -z istio-galley-service-account -n istio-system
-  
-  # Deploy the latest Istio release
-  oc apply -f $ISTIO_CRD_RELEASE
-  oc apply -f $ISTIO_RELEASE
 
-  # Ensure the istio-sidecar-injector pod runs as privileged
-  oc get cm istio-sidecar-injector -n istio-system -o yaml | sed -e 's/securityContext:/securityContext:\\n      privileged: true/' | oc replace -f -
-  # Monitor the Istio components until all the components are up and running
+  # Install the Maistra Operator
+  oc create namespace istio-operator
+  oc process -f https://raw.githubusercontent.com/Maistra/openshift-ansible/maistra-${MAISTRA_VERSION}/istio/istio_community_operator_template.yaml | oc create -f -
+
+  # Wait until the Operator pod is up and running
+  wait_until_pods_running istio-operator || return 1
+
+  # Deploy Istio
+  cat <<EOF | oc apply -f -
+apiVersion: istio.openshift.com/v1alpha1
+kind: Installation
+metadata:
+  namespace: istio-operator
+  name: istio-installation
+spec:
+  istio:
+    authentication: false
+    community: true
+EOF
+
+  # Wait until at least the istio installer job is running
   wait_until_pods_running istio-system || return 1
+
+  timeout 900 'oc get pods -n istio-system && [[ $(oc get pods -n istio-system | grep openshift-ansible-istio-installer | grep -c Completed) -eq 0 ]]' || return 1
+
+  # Scale down unused services deployed by the istio operator. The
+  # jaeger pods will fail anyway due to the elasticsearch pod failing
+  # due to "max virtual memory areas vm.max_map_count [65530] is too
+  # low, increase to at least [262144]" which could be mitigated on
+  # minishift with:
+  #  minishift ssh "echo 'echo vm.max_map_count = 262144 >/etc/sysctl.d/99-elasticsearch.conf' | sudo sh"
+  oc scale -n istio-system --replicas=0 deployment/grafana
+  oc scale -n istio-system --replicas=0 deployment/jaeger-collector
+  oc scale -n istio-system --replicas=0 deployment/jaeger-query
+  oc scale -n istio-system --replicas=0 statefulset/elasticsearch
+
+  patch_istio_for_knative || return 1
+  
   header "Istio Installed successfully"
 }
 
@@ -121,7 +161,7 @@ function install_knative_eventing(){
   echo ">>> Setting SSL_CERT_FILE for Knative Eventing Controller"
   oc set env -n $EVENTING_NAMESPACE deployment/eventing-controller SSL_CERT_FILE=/var/run/secrets/kubernetes.io/serviceaccount/service-ca.crt
 
-  wait_until_pods_running $EVENTING_NAMESPACE
+  wait_until_pods_running $EVENTING_NAMESPACE || return 1
 }
 
 function install_in_memory_channel_provisioner(){
@@ -164,10 +204,6 @@ function resolve_resources(){
   for name in $IMAGE_NAMES; do
     tag_built_image ${name} ${name}
   done
-}
-
-function enable_docker_schema2(){
-  oc set env -n default dc/docker-registry REGISTRY_MIDDLEWARE_REPOSITORY_OPENSHIFT_ACCEPTSCHEMA2=true
 }
 
 function create_test_namespace(){
@@ -257,29 +293,27 @@ function tag_built_image() {
   oc tag --insecure=${INSECURE} -n ${EVENTING_NAMESPACE} ${OPENSHIFT_REGISTRY}/${OPENSHIFT_BUILD_NAMESPACE}/stable:${remote_name} ${local_name}:latest
 }
 
-install_istio
-
-enable_docker_schema2
-
-install_knative_build
-
-install_knative_serving
-
-install_knative_eventing
-
-install_knative_eventing_sources
-
-install_in_memory_channel_provisioner
-
-create_test_namespace
-
-create_test_resources
-
 failed=0
 
-run_e2e_tests || failed=1
+(( !failed )) && install_istio || failed=1
 
-run_demo || failed=1
+(( !failed )) && install_knative_build || failed=1
+
+(( !failed )) && install_knative_serving || failed=1
+
+(( !failed )) && install_knative_eventing || failed=1
+
+(( !failed )) && install_knative_eventing_sources || failed=1
+
+(( !failed )) && install_in_memory_channel_provisioner || failed=1
+
+(( !failed )) && create_test_namespace
+
+(( !failed )) && create_test_resources
+
+(( !failed )) && run_e2e_tests || failed=1
+
+(( !failed )) && run_demo || failed=1
 
 (( failed )) && dump_cluster_state
 
