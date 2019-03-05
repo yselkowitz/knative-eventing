@@ -57,7 +57,7 @@ function install_istio(){
 
   # Install the Maistra Operator
   oc create namespace istio-operator
-  oc process -f https://raw.githubusercontent.com/Maistra/openshift-ansible/maistra-${MAISTRA_VERSION}/istio/istio_community_operator_template.yaml | oc create -f -
+  oc process --local -f https://raw.githubusercontent.com/Maistra/openshift-ansible/maistra-${MAISTRA_VERSION}/istio/istio_community_operator_template.yaml | oc create -f -
 
   # Wait until the Operator pod is up and running
   wait_until_pods_running istio-operator || return 1
