@@ -6,7 +6,7 @@ source $(dirname $0)/kubecon-demo.sh
 set -x
 
 readonly BUILD_VERSION=v0.3.0
-readonly SERVING_VERSION=v0.3.0
+readonly SERVING_VERSION=0.3
 readonly EVENTING_SOURCES_VERSION=v0.3.0
 
 readonly SERVING_BASE=https://github.com/knative/serving/releases/download/${SERVING_VERSION}
@@ -21,6 +21,7 @@ readonly INTERNAL_REGISTRY="${INTERNAL_REGISTRY:-"docker-registry.default.svc:50
 readonly USER=$KUBE_SSH_USER #satisfy e2e_flags.go#initializeFlags()
 readonly OPENSHIFT_REGISTRY="${OPENSHIFT_REGISTRY:-"registry.svc.ci.openshift.org"}"
 readonly INSECURE="${INSECURE:-"false"}"
+readonly SERVING_NAMESPACE=knative-serving
 readonly EVENTING_NAMESPACE=knative-eventing
 readonly TEST_NAMESPACE=e2etest
 readonly TEST_FUNCTION_NAMESPACE=e2etestfn3
@@ -117,10 +118,15 @@ function install_knative_serving(){
   oc adm policy add-scc-to-user anyuid -z autoscaler -n knative-serving
   oc adm policy add-cluster-role-to-user cluster-admin -z controller -n knative-serving
 
-  curl -L ${SERVING_RELEASE} | sed '/nodePort/d' | oc apply -f -
-  
-  oc -n knative-serving get cm config-controller -oyaml | \
-  sed "s/\(^ *registriesSkippingTagResolving.*$\)/\1,image-registry.openshift-image-registry.svc:5000/" | oc apply -f -
+  curl -L https://api.github.com/repos/openshift/knative-serving/tarball/release-${SERVING_VERSION} > serving-release-${SERVING_VERSION}.tgz
+  tar xzf serving-release-${SERVING_VERSION}.tgz
+
+  resolve_serving_resources openshift-knative-serving-*/config/ serving-resolved.yaml || return 0
+
+  # Remove nodePort spec as the ports do not fall into the range allowed by OpenShift
+  sed '/nodePort/d' serving-resolved.yaml | oc apply -f -
+
+  enable_knative_interaction_with_registry
 
   echo ">> Patching knative-ingressgateway"
   oc patch hpa -n istio-system knative-ingressgateway --patch '{"spec": {"maxReplicas": 1}}'
@@ -206,11 +212,33 @@ function resolve_resources(){
   done
 }
 
+function resolve_serving_resources(){
+  local dir=$1
+  local resolved_file_name=$2
+  > $resolved_file_name
+  for yaml in $(find $dir -maxdepth 1 -name "*.yaml"); do
+    echo "---" >> $resolved_file_name
+    sed -e 's/\(.* image: \)\(github.com\)\(.*\/\)\(.*\)/\1 '"$OPENSHIFT_REGISTRY"'\/'"openshift"'\/'"knative-v${SERVING_VERSION}:knative-serving-\4"'/' $yaml >> $resolved_file_name
+  done
+}
+
 function create_test_namespace(){
   oc new-project $TEST_NAMESPACE
   oc adm policy add-scc-to-user privileged -z default -n $TEST_NAMESPACE
   oc new-project $TEST_FUNCTION_NAMESPACE
   oc adm policy add-scc-to-user privileged -z default -n $TEST_FUNCTION_NAMESPACE
+}
+
+function enable_knative_interaction_with_registry() {
+  local configmap_name=config-service-ca
+  local cert_name=service-ca.crt
+  local mount_path=/var/run/secrets/kubernetes.io/servicecerts
+
+  oc -n $SERVING_NAMESPACE create configmap $configmap_name
+  oc -n $SERVING_NAMESPACE annotate configmap $configmap_name service.alpha.openshift.io/inject-cabundle="true"
+  wait_until_configmap_contains $SERVING_NAMESPACE $configmap_name $cert_name
+  oc -n $SERVING_NAMESPACE set volume deployment/controller --add --name=service-ca --configmap-name=$configmap_name --mount-path=$mount_path
+  oc -n $SERVING_NAMESPACE set env deployment/controller SSL_CERT_FILE=$mount_path/$cert_name
 }
 
 function run_e2e_tests(){
