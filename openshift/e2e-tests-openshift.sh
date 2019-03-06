@@ -219,7 +219,7 @@ function resolve_serving_resources(){
   for yaml in $(find $dir -maxdepth 1 -name "*.yaml"); do
     echo "---" >> $resolved_file_name
     sed -e 's/\(.* image: \)\(github.com\)\(.*\/\)\(.*\)/\1 '"$OPENSHIFT_REGISTRY"'\/'"openshift"'\/'"knative-v${SERVING_VERSION}:knative-serving-\4"'/' \
-        -e 's/\(.* queueSidecarImage: \)\(github.com\)\(.*\/\)\(.*\)/\1 '"$OPENSHIFT_REGISTRY"'\/'"openshift"'\/'"knative-v${SERVING_VERSION}:knative-serving-\4"'/' >> $resolved_file_name
+        -e 's/\(.* queueSidecarImage: \)\(github.com\)\(.*\/\)\(.*\)/\1 '"$OPENSHIFT_REGISTRY"'\/'"openshift"'\/'"knative-v${SERVING_VERSION}:knative-serving-\4"'/' $yaml >> $resolved_file_name
   done
 }
 
