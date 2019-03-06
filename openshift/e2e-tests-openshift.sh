@@ -29,7 +29,7 @@ readonly TEST_FUNCTION_NAMESPACE=e2etestfn3
 env
 
 # Loops until duration (car) is exceeded or command (cdr) returns non-zero
-function timeout() {
+function timeout_non_zero() {
   SECONDS=0; TIMEOUT=$1; shift
   while eval $*; do
     sleep 5
@@ -79,7 +79,7 @@ EOF
   # Wait until at least the istio installer job is running
   wait_until_pods_running istio-system || return 1
 
-  timeout 900 'oc get pods -n istio-system && [[ $(oc get pods -n istio-system | grep openshift-ansible-istio-installer | grep -c Completed) -eq 0 ]]' || return 1
+  timeout_non_zero 900 'oc get pods -n istio-system && [[ $(oc get pods -n istio-system | grep openshift-ansible-istio-installer | grep -c Completed) -eq 0 ]]' || return 1
 
   # Scale down unused services deployed by the istio operator. The
   # jaeger pods will fail anyway due to the elasticsearch pod failing
