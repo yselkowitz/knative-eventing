@@ -244,7 +244,7 @@ function run_e2e_tests(){
 function delete_istio_openshift(){
   echo ">> Bringing down Istio"
   oc delete -n istio-operator installation istio-installation
-  oc process -f $MAISTRA_RELEASE | oc delete --ignore-not-found=true -f -
+  #oc process -f $MAISTRA_RELEASE | oc delete --ignore-not-found=true -f -
 }
 
 function delete_serving_openshift() {
