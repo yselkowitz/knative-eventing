@@ -24,7 +24,8 @@ readonly INSECURE="${INSECURE:-"false"}"
 readonly SERVING_NAMESPACE=knative-serving
 readonly EVENTING_NAMESPACE=knative-eventing
 readonly TEST_NAMESPACE=e2etest
-readonly TEST_FUNCTION_NAMESPACE=e2etestfn3
+#readonly TEST_FUNCTION_NAMESPACE=e2etestfn3
+readonly TEST_FUNCTION_NAMESPACE=e2etest-knative-eventing
 
 env
 
@@ -184,8 +185,8 @@ function create_test_resources() {
   #Grant additional privileges
   oc adm policy add-scc-to-user anyuid -z default -n $TEST_FUNCTION_NAMESPACE
   oc adm policy add-scc-to-user privileged -z default -n $TEST_FUNCTION_NAMESPACE
-  oc adm policy add-scc-to-user anyuid -z e2e-receive-adapter -n $TEST_FUNCTION_NAMESPACE
-  oc adm policy add-scc-to-user privileged -z e2e-receive-adapter -n $TEST_FUNCTION_NAMESPACE
+  # oc adm policy add-scc-to-user anyuid -z e2e-receive-adapter -n $TEST_FUNCTION_NAMESPACE
+  # oc adm policy add-scc-to-user privileged -z e2e-receive-adapter -n $TEST_FUNCTION_NAMESPACE
 }
 
 function resolve_resources(){
