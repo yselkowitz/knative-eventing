@@ -6,15 +6,12 @@ source $(dirname $0)/release/resolve.sh
 set -x
 
 readonly BUILD_VERSION=v0.4.0
-readonly SERVING_VERSION=v0.4.1
-readonly EVENTING_SOURCES_VERSION=v0.4.1
-readonly MAISTRA_VERSION="0.6"
-
-
-readonly MAISTRA_RELEASE=https://raw.githubusercontent.com/Maistra/openshift-ansible/maistra-${MAISTRA_VERSION}/istio/istio_community_operator_template.yaml
 readonly BUILD_RELEASE=https://github.com/knative/build/releases/download/${BUILD_VERSION}/build.yaml
+readonly MAISTRA_VERSION="0.6"
+readonly SERVING_VERSION=v0.5.1
 readonly SERVING_RELEASE=https://github.com/knative/serving/releases/download/${SERVING_VERSION}/serving.yaml
-readonly EVENTING_SOURCES_RELEASE=https://github.com/knative/eventing-sources/releases/download/${EVENTING_SOURCES_VERSION}/release.yaml
+readonly EVENTING_SOURCES_VERSION=v0.5.0
+readonly EVENTING_SOURCES_RELEASE=https://github.com/knative/eventing-sources/releases/download/${EVENTING_SOURCES_VERSION}/eventing-sources.yaml
 
 readonly K8S_CLUSTER_OVERRIDE=$(oc config current-context | awk -F'/' '{print $2}')
 readonly API_SERVER=$(oc config view --minify | grep server | awk -F'//' '{print $2}' | awk -F':' '{print $1}')
@@ -25,7 +22,6 @@ readonly INSECURE="${INSECURE:-"false"}"
 readonly SERVING_NAMESPACE=knative-serving
 readonly EVENTING_NAMESPACE=knative-eventing
 readonly TEST_NAMESPACE=e2etest
-#readonly TEST_FUNCTION_NAMESPACE=e2etestfn3
 readonly TEST_FUNCTION_NAMESPACE=e2etest-knative-eventing
 readonly TARGET_IMAGE_PREFIX="$INTERNAL_REGISTRY/$EVENTING_NAMESPACE/knative-eventing-"
 
@@ -61,7 +57,7 @@ function install_istio(){
 
   # Install the Maistra Operator
   oc create namespace istio-operator
-  oc process -f $MAISTRA_RELEASE | oc create -f -
+  oc process -f https://raw.githubusercontent.com/Maistra/openshift-ansible/maistra-${MAISTRA_VERSION}/istio/istio_community_operator_template.yaml | oc create -f -
 
   # Wait until the Operator pod is up and running
   wait_until_pods_running istio-operator || return 1
@@ -122,17 +118,39 @@ function install_knative_serving(){
   oc adm policy add-scc-to-user anyuid -z autoscaler -n knative-serving
   oc adm policy add-cluster-role-to-user cluster-admin -z controller -n knative-serving
 
-  curl -L https://storage.googleapis.com/knative-releases/serving/latest/serving.yaml \
+  curl -L $SERVING_RELEASE \
   | sed 's/LoadBalancer/NodePort/' \
   | oc apply --filename -
 
   enable_knative_interaction_with_registry
 
-  echo ">> Patching istio-ingressgateway"
-  oc patch hpa -n istio-system istio-ingressgateway --patch '{"spec": {"maxReplicas": 1}}'
+  echo ">> Patching Istio"
+  for gateway in istio-ingressgateway cluster-local-gateway istio-egressgateway; do
+    if kubectl get svc -n istio-system ${gateway} > /dev/null 2>&1 ; then
+      kubectl patch hpa -n istio-system ${gateway} --patch '{"spec": {"maxReplicas": 1}}'
+      kubectl set resources deploy -n istio-system ${gateway} \
+        -c=istio-proxy --requests=cpu=50m 2> /dev/null
+    fi
+  done
+
+  # There are reports of Envoy failing (503) when istio-pilot is overloaded.
+  # We generously add more pilot instances here to verify if we can reduce flakes.
+  if kubectl get hpa -n istio-system istio-pilot 2>/dev/null; then
+    # If HPA exists, update it.  Since patching will return non-zero if no change
+    # is made, we don't return on failure here.
+    kubectl patch hpa -n istio-system istio-pilot \
+      --patch '{"spec": {"minReplicas": 3, "maxReplicas": 10, "targetCPUUtilizationPercentage": 60}}' \
+      `# Ignore error messages to avoid causing red herrings in the tests` \
+      2>/dev/null
+  else
+    # Some versions of Istio doesn't provide an HPA for pilot.
+    kubectl autoscale -n istio-system deploy istio-pilot --min=3 --max=10 --cpu-percent=60 || return 1
+  fi
 
   wait_until_pods_running knative-serving || return 1
   wait_until_service_has_external_ip istio-system istio-ingressgateway || fail_test "Ingress has no external IP"
+  wait_until_hostname_resolves $(kubectl get svc -n istio-system istio-ingressgateway -o jsonpath="{.status.loadBalancer.ingress[0].hostname}")
+
   header "Knative Serving installed successfully"
 }
 
@@ -193,6 +211,8 @@ function create_test_resources() {
   #Grant additional privileges
   oc adm policy add-scc-to-user anyuid -z default -n $TEST_FUNCTION_NAMESPACE
   oc adm policy add-scc-to-user privileged -z default -n $TEST_FUNCTION_NAMESPACE
+  oc adm policy add-scc-to-user anyuid -z eventing-broker-filter -n $TEST_FUNCTION_NAMESPACE
+  oc adm policy add-scc-to-user privileged -z eventing-broker-filter -n $TEST_FUNCTION_NAMESPACE
   # oc adm policy add-scc-to-user anyuid -z e2e-receive-adapter -n $TEST_FUNCTION_NAMESPACE
   # oc adm policy add-scc-to-user privileged -z e2e-receive-adapter -n $TEST_FUNCTION_NAMESPACE
 }
@@ -233,9 +253,8 @@ function run_e2e_tests(){
   options=""
   (( EMIT_METRICS )) && options="-emitmetrics"
   report_go_test \
-    -v -tags=e2e -count=1 -timeout=20m \
+    -v -tags=e2e -count=1 -timeout=20m -short -parallel=1 \
     ./test/e2e \
-    --tag latest \
     --kubeconfig $KUBECONFIG \
     --dockerrepo ${INTERNAL_REGISTRY}/${EVENTING_NAMESPACE} \
     ${options} || return 1
@@ -244,7 +263,6 @@ function run_e2e_tests(){
 function delete_istio_openshift(){
   echo ">> Bringing down Istio"
   oc delete -n istio-operator installation istio-installation
-  #oc process -f $MAISTRA_RELEASE | oc delete --ignore-not-found=true -f -
 }
 
 function delete_serving_openshift() {
@@ -297,7 +315,7 @@ function tag_test_images() {
 
   for image_dir in ${image_dirs}; do
     name=$(basename ${image_dir})
-    tag_built_image knative-eventing-test-${name} ${name} e2e
+    tag_built_image knative-eventing-test-${name} ${name} latest
 
   done
 }
