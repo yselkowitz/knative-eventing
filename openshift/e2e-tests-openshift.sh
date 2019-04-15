@@ -380,7 +380,9 @@ failed=0
 
 (( !failed )) && create_test_resources
 
-(( !failed )) && [[ $TEST_ORIGIN_CONFORMANCE == true ]] && run_origin_e2e || failed=1
+if [[ $TEST_ORIGIN_CONFORMANCE == true ]]; then
+  (( !failed )) && run_origin_e2e || failed=1
+fi
 
 (( !failed )) && run_e2e_tests || failed=1
 
