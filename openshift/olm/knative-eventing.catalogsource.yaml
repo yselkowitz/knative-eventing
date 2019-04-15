@@ -673,6 +673,12 @@ data:
               - apiGroups:
                 - sources.eventing.knative.dev
                 resources:
+                - '*/finalizers'
+                verbs:
+                - '*'
+              - apiGroups:
+                - sources.eventing.knative.dev
+                resources:
                 - awssqssources/status
                 - containersources/status
                 - cronjobsources/status
