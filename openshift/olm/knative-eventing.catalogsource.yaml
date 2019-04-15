@@ -673,19 +673,9 @@ data:
               - apiGroups:
                 - sources.eventing.knative.dev
                 resources:
-                - awssqssources/finalizers
-                - containersources/finalizers
-                - cronjobsources/finalizers
-                - githubsources/finalizers
-                - kuberneteseventsources/finalizers
+                - '*/finalizers'
                 verbs:
-                - get
-                - list
-                - watch
-                - create
-                - update
-                - patch
-                - delete
+                - '*'
               - apiGroups:
                 - sources.eventing.knative.dev
                 resources:
