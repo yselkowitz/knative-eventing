@@ -168,7 +168,6 @@ function install_knative_eventing(){
   oc adm policy add-scc-to-user anyuid -z eventing-controller -n $EVENTING_NAMESPACE
   oc adm policy add-scc-to-user anyuid -z eventing-webhook -n $EVENTING_NAMESPACE
   oc adm policy add-scc-to-user privileged -z eventing-webhook -n $EVENTING_NAMESPACE
-  # oc adm policy add-scc-to-user anyuid -z default -n $EVENTING_NAMESPACE
   oc adm policy add-scc-to-user anyuid -z in-memory-channel-dispatcher -n $EVENTING_NAMESPACE
   oc adm policy add-scc-to-user anyuid -z in-memory-channel-controller -n $EVENTING_NAMESPACE
 
@@ -183,7 +182,6 @@ function install_knative_eventing(){
   oc adm policy add-cluster-role-to-user cluster-admin -z in-memory-channel-dispatcher -n $EVENTING_NAMESPACE
   oc adm policy add-cluster-role-to-user cluster-admin -z in-memory-channel-controller -n $EVENTING_NAMESPACE
   oc adm policy add-cluster-role-to-user cluster-admin -z default -n knative-sources
-#  oc adm policy add-cluster-role-to-user cluster-admin -z default -n $EVENTING_NAMESPACE
 
   echo ">>> Setting SSL_CERT_FILE for Knative Eventing Controller"
   oc set env -n $EVENTING_NAMESPACE deployment/eventing-controller SSL_CERT_FILE=/var/run/secrets/kubernetes.io/serviceaccount/service-ca.crt
@@ -213,9 +211,6 @@ function create_test_resources() {
 
   echo ">> Creating imagestream tags for all test images"
   tag_test_images test/test_images
-
-#  oc -n $TEST_FUNCTION_NAMESPACE create serviceaccount eventing-broker-filter
-#  oc -n $TEST_FUNCTION_NAMESPACE create rolebinding eventing-broker-filter --clusterrole=eventing-broker-filter --user=eventing-broker-filter
 
   #Grant additional privileges
   oc adm policy add-scc-to-user anyuid -z default -n $TEST_FUNCTION_NAMESPACE
