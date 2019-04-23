@@ -166,6 +166,8 @@ function install_knative_eventing(){
   oc annotate clusterrolebinding.rbac cluster-admins 'rbac.authorization.kubernetes.io/autoupdate=false' --overwrite
 
   oc adm policy add-scc-to-user anyuid -z eventing-controller -n $EVENTING_NAMESPACE
+  oc adm policy add-scc-to-user anyuid -z eventing-webhook -n $EVENTING_NAMESPACE
+  #oc adm policy add-scc-to-user privileged -z eventing-webhook -n $EVENTING_NAMESPACE
   oc adm policy add-scc-to-user anyuid -z in-memory-channel-dispatcher -n $EVENTING_NAMESPACE
   oc adm policy add-scc-to-user anyuid -z in-memory-channel-controller -n $EVENTING_NAMESPACE
 
@@ -176,6 +178,7 @@ function install_knative_eventing(){
   oc apply -f eventing-resolved.yaml
 
   oc adm policy add-cluster-role-to-user cluster-admin -z eventing-controller -n $EVENTING_NAMESPACE
+  #oc adm policy add-cluster-role-to-user cluster-admin -z eventing-webhook -n $EVENTING_NAMESPACE
   oc adm policy add-cluster-role-to-user cluster-admin -z in-memory-channel-dispatcher -n $EVENTING_NAMESPACE
   oc adm policy add-cluster-role-to-user cluster-admin -z in-memory-channel-controller -n $EVENTING_NAMESPACE
   oc adm policy add-cluster-role-to-user cluster-admin -z default -n knative-sources
@@ -214,8 +217,7 @@ function create_test_resources() {
   oc adm policy add-scc-to-user privileged -z default -n $TEST_FUNCTION_NAMESPACE
   oc adm policy add-scc-to-user anyuid -z eventing-broker-filter -n $TEST_FUNCTION_NAMESPACE
   oc adm policy add-scc-to-user privileged -z eventing-broker-filter -n $TEST_FUNCTION_NAMESPACE
-  # oc adm policy add-scc-to-user anyuid -z e2e-receive-adapter -n $TEST_FUNCTION_NAMESPACE
-  # oc adm policy add-scc-to-user privileged -z e2e-receive-adapter -n $TEST_FUNCTION_NAMESPACE
+  oc adm policy add-cluster-role-to-user cluster-admin -z eventing-broker-filter -n $TEST_FUNCTION_NAMESPACE
 }
 
 function tag_core_images(){
@@ -224,7 +226,7 @@ function tag_core_images(){
   oc policy add-role-to-group system:image-puller system:serviceaccounts:${EVENTING_NAMESPACE} --namespace=${OPENSHIFT_BUILD_NAMESPACE}
 
   echo ">> Creating imagestream tags for images referenced in yaml files"
-  IMAGE_NAMES=$(cat $resolved_file_name | grep -i "image:" | grep "$INTERNAL_REGISTRY" | awk '{print $2}' | awk -F '/' '{print $3}')
+  IMAGE_NAMES=$(cat $resolved_file_name | grep -i "image:\|value:" | grep "$INTERNAL_REGISTRY" | awk '{print $2}' | awk -F '/' '{print $3}')
   for name in $IMAGE_NAMES; do
     tag_built_image ${name} ${name} latest
   done
