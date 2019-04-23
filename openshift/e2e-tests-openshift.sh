@@ -167,7 +167,7 @@ function install_knative_eventing(){
 
   oc adm policy add-scc-to-user anyuid -z eventing-controller -n $EVENTING_NAMESPACE
   oc adm policy add-scc-to-user anyuid -z eventing-webhook -n $EVENTING_NAMESPACE
-  oc adm policy add-scc-to-user privileged -z eventing-webhook -n $EVENTING_NAMESPACE
+  #oc adm policy add-scc-to-user privileged -z eventing-webhook -n $EVENTING_NAMESPACE
   oc adm policy add-scc-to-user anyuid -z in-memory-channel-dispatcher -n $EVENTING_NAMESPACE
   oc adm policy add-scc-to-user anyuid -z in-memory-channel-controller -n $EVENTING_NAMESPACE
 
@@ -178,7 +178,7 @@ function install_knative_eventing(){
   oc apply -f eventing-resolved.yaml
 
   oc adm policy add-cluster-role-to-user cluster-admin -z eventing-controller -n $EVENTING_NAMESPACE
-  oc adm policy add-cluster-role-to-user cluster-admin -z eventing-webhook -n $EVENTING_NAMESPACE
+  #oc adm policy add-cluster-role-to-user cluster-admin -z eventing-webhook -n $EVENTING_NAMESPACE
   oc adm policy add-cluster-role-to-user cluster-admin -z in-memory-channel-dispatcher -n $EVENTING_NAMESPACE
   oc adm policy add-cluster-role-to-user cluster-admin -z in-memory-channel-controller -n $EVENTING_NAMESPACE
   oc adm policy add-cluster-role-to-user cluster-admin -z default -n knative-sources
