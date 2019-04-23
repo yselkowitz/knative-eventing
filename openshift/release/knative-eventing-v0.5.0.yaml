@@ -200,8 +200,15 @@ rules:
       - "apps"
     resources:
       - "deployments"
+      - "deployments/finalizers"
     verbs:
       - "get"
+      - "list"
+      - "create"
+      - "update"
+      - "delete"
+      - "patch"
+      - "watch"
   - apiGroups:
       - "admissionregistration.k8s.io"
     resources:
