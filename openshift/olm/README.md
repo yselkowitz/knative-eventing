@@ -18,8 +18,8 @@ knative-eventing), either use the console, or apply the following:
 	kind: Namespace
 	metadata:
 	  name: knative-eventing
-      labels:
-        istio-injection: enabled
+          labels:
+            istio-injection: enabled
 	---
 	apiVersion: operators.coreos.com/v1
 	kind: OperatorGroup
