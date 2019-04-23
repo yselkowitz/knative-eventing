@@ -42,371 +42,6 @@ data:
     - apiVersion: apiextensions.k8s.io/v1beta1
       kind: CustomResourceDefinition
       metadata:
-        name: brokers.eventing.knative.dev
-        labels:
-          knative.dev/crd-install: "true"
-      spec:
-        group: eventing.knative.dev
-        version: v1alpha1
-        names:
-          kind: Broker
-          plural: brokers
-          singular: broker
-          categories:
-          - all
-          - knative
-          - eventing
-        scope: Namespaced
-        subresources:
-          status: {}
-        additionalPrinterColumns:
-          - name: Ready
-            type: string
-            JSONPath: ".status.conditions[?(@.type==\"Ready\")].status"
-          - name: Reason
-            type: string
-            JSONPath: ".status.conditions[?(@.type==\"Ready\")].reason"
-          - name: Hostname
-            type: string
-            JSONPath: .status.address.hostname
-          - name: Age
-            type: date
-            JSONPath: .metadata.creationTimestamp
-        validation:
-          openAPIV3Schema:
-            properties:
-              spec:
-                properties:
-                  channelTemplate:
-                    type: object
-                    required:
-                      - provisioner
-                    properties:
-                      provisioner:
-                        type: object
-                        required:
-                          - apiVersion
-                          - kind
-                          - name
-                        properties:
-                          apiVersion:
-                            type: string
-                            minLength: 1
-                          kind:
-                            type: string
-                            minLength: 1
-                          name:
-                            type: string
-                            minLength: 1
-                      arguments:
-                        type: object
-                        additionalProperties: true
-    - apiVersion: apiextensions.k8s.io/v1beta1
-      kind: CustomResourceDefinition
-      metadata:
-        name: channels.eventing.knative.dev
-        labels:
-          knative.dev/crd-install: "true"
-      spec:
-        group: eventing.knative.dev
-        version: v1alpha1
-        names:
-          kind: Channel
-          plural: channels
-          singular: channel
-          categories:
-          - all
-          - knative
-          - eventing
-          shortNames:
-          - chan
-        scope: Namespaced
-        subresources:
-          status: {}
-        additionalPrinterColumns:
-          - name: Ready
-            type: string
-            JSONPath: ".status.conditions[?(@.type==\"Ready\")].status"
-          - name: Reason
-            type: string
-            JSONPath: ".status.conditions[?(@.type==\"Ready\")].reason"
-          - name: Age
-            type: date
-            JSONPath: .metadata.creationTimestamp
-        validation:
-          openAPIV3Schema:
-            properties:
-              spec:
-                properties:
-                  provisioner:
-                    type: object
-                    required:
-                      - apiVersion
-                      - kind
-                      - name
-                    properties:
-                      apiVersion:
-                        type: string
-                        minLength: 1
-                      kind:
-                        type: string
-                        minLength: 1
-                      name:
-                        type: string
-                        minLength: 1
-                  arguments:
-                    type: object
-                    additionalProperties: true
-                  subscribable:
-                    type: object
-                    properties:
-                      subscribers:
-                        type: array
-                        items:
-                          required:
-                            - ref
-                          properties:
-                            ref:
-                              type: object
-                              required:
-                                - namespace
-                                - name
-                                - uid
-                              properties:
-                                apiVersion:
-                                  type: string
-                                kind:
-                                  type: string
-                                name:
-                                  type: string
-                                  minLength: 1
-                                namespace:
-                                  type: string
-                                  minLength: 1
-                                uid:
-                                  type: string
-                                  minLength: 1
-                            subscriberURI:
-                              type: string
-                              minLength: 1
-                            replyURI:
-                              type: string
-                              minLength: 1
-    - apiVersion: apiextensions.k8s.io/v1beta1
-      kind: CustomResourceDefinition
-      metadata:
-        name: clusterchannelprovisioners.eventing.knative.dev
-        labels:
-          knative.dev/crd-install: "true"
-      spec:
-        group: eventing.knative.dev
-        version: v1alpha1
-        names:
-          kind: ClusterChannelProvisioner
-          plural: clusterchannelprovisioners
-          singular: clusterchannelprovisioner
-          categories:
-          - all
-          - knative
-          - eventing
-          - provisioner
-          shortNames:
-          - ccp
-        scope: Cluster
-        subresources:
-          status: {}
-        additionalPrinterColumns:
-          - name: Ready
-            type: string
-            JSONPath: ".status.conditions[?(@.type==\"Ready\")].status"
-          - name: Reason
-            type: string
-            JSONPath: ".status.conditions[?(@.type==\"Ready\")].reason"
-          - name: Age
-            type: date
-            JSONPath: .metadata.creationTimestamp
-    - apiVersion: apiextensions.k8s.io/v1beta1
-      kind: CustomResourceDefinition
-      metadata:
-        name: subscriptions.eventing.knative.dev
-        labels:
-          knative.dev/crd-install: "true"
-      spec:
-        group: eventing.knative.dev
-        version: v1alpha1
-        names:
-          kind: Subscription
-          plural: subscriptions
-          singular: subscription
-          categories:
-          - all
-          - knative
-          - eventing
-          shortNames:
-          - sub
-        scope: Namespaced
-        subresources:
-          status: {}
-        additionalPrinterColumns:
-          - name: Ready
-            type: string
-            JSONPath: ".status.conditions[?(@.type==\"Ready\")].status"
-          - name: Reason
-            type: string
-            JSONPath: ".status.conditions[?(@.type==\"Ready\")].reason"
-          - name: Age
-            type: date
-            JSONPath: .metadata.creationTimestamp
-        validation:
-          openAPIV3Schema:
-            properties:
-              spec:
-                required:
-                  - channel
-                properties:
-                  channel:
-                    type: object
-                    required:
-                      - apiVersion
-                      - kind
-                      - name
-                    properties:
-                      apiVersion:
-                        type: string
-                        minLength: 1
-                      kind:
-                        type: string
-                        pattern: "^Channel$"
-                      name:
-                        type: string
-                        minLength: 1
-                  subscriber:
-                    type: object
-                    properties:
-                      dnsName:
-                        type: string
-                        minLength: 1
-                      uri:
-                        type: string
-                        minLength: 1
-                      ref:
-                        type: object
-                        required:
-                          - apiVersion
-                          - kind
-                          - name
-                        properties:
-                          apiVersion:
-                            type: string
-                            minLength: 1
-                          kind:
-                            type: string
-                            minLength: 1
-                          name:
-                            type: string
-                            minLength: 1
-                  reply:
-                    type: object
-                    properties:
-                      channel:
-                        type: object
-                        required:
-                          - apiVersion
-                          - kind
-                          - name
-                        properties:
-                          apiVersion:
-                            type: string
-                            minLength: 1
-                          kind:
-                            type: string
-                            pattern: "^Channel$"
-                          name:
-                            type: string
-                            minLength: 1
-    - apiVersion: apiextensions.k8s.io/v1beta1
-      kind: CustomResourceDefinition
-      metadata:
-        name: triggers.eventing.knative.dev
-        labels:
-          knative.dev/crd-install: "true"
-      spec:
-        group: eventing.knative.dev
-        version: v1alpha1
-        names:
-          kind: Trigger
-          plural: triggers
-          singular: trigger
-          categories:
-          - all
-          - knative
-          - eventing
-        scope: Namespaced
-        subresources:
-          status: {}
-        additionalPrinterColumns:
-          - name: Ready
-            type: string
-            JSONPath: ".status.conditions[?(@.type==\"Ready\")].status"
-          - name: Reason
-            type: string
-            JSONPath: ".status.conditions[?(@.type==\"Ready\")].reason"
-          - name: Broker
-            type: string
-            JSONPath: .spec.broker
-          - name: Subscriber_URI
-            type: string
-            JSONPath: .status.subscriberURI
-          - name: Age
-            type: date
-            JSONPath: .metadata.creationTimestamp
-        validation:
-          openAPIV3Schema:
-            properties:
-              spec:
-                required:
-                  - subscriber
-                properties:
-                  broker:
-                    type: string
-                  filter:
-                    type: object
-                    properties:
-                      sourceAndType:
-                        type: object
-                        properties:
-                          type:
-                            type: string
-                          source:
-                            type: string
-                  subscriber:
-                    type: object
-                    properties:
-                      dnsName:
-                        type: string
-                        minLength: 1
-                      uri:
-                        type: string
-                        minLength: 1
-                      ref:
-                        type: object
-                        required:
-                          - apiVersion
-                          - kind
-                          - name
-                        properties:
-                          apiVersion:
-                            type: string
-                            minLength: 1
-                          kind:
-                            type: string
-                            minLength: 1
-                          name:
-                            type: string
-                            minLength: 1
-    - apiVersion: apiextensions.k8s.io/v1beta1
-      kind: CustomResourceDefinition
-      metadata:
         labels:
           eventing.knative.dev/source: "true"
           knative.dev/crd-install: "true"
@@ -946,6 +581,371 @@ data:
                     type: string
                 type: object
         version: v1alpha1
+    - apiVersion: apiextensions.k8s.io/v1beta1
+      kind: CustomResourceDefinition
+      metadata:
+        name: brokers.eventing.knative.dev
+        labels:
+          knative.dev/crd-install: "true"
+      spec:
+        group: eventing.knative.dev
+        version: v1alpha1
+        names:
+          kind: Broker
+          plural: brokers
+          singular: broker
+          categories:
+          - all
+          - knative
+          - eventing
+        scope: Namespaced
+        subresources:
+          status: {}
+        additionalPrinterColumns:
+          - name: Ready
+            type: string
+            JSONPath: ".status.conditions[?(@.type==\"Ready\")].status"
+          - name: Reason
+            type: string
+            JSONPath: ".status.conditions[?(@.type==\"Ready\")].reason"
+          - name: Hostname
+            type: string
+            JSONPath: .status.address.hostname
+          - name: Age
+            type: date
+            JSONPath: .metadata.creationTimestamp
+        validation:
+          openAPIV3Schema:
+            properties:
+              spec:
+                properties:
+                  channelTemplate:
+                    type: object
+                    required:
+                      - provisioner
+                    properties:
+                      provisioner:
+                        type: object
+                        required:
+                          - apiVersion
+                          - kind
+                          - name
+                        properties:
+                          apiVersion:
+                            type: string
+                            minLength: 1
+                          kind:
+                            type: string
+                            minLength: 1
+                          name:
+                            type: string
+                            minLength: 1
+                      arguments:
+                        type: object
+                        additionalProperties: true
+    - apiVersion: apiextensions.k8s.io/v1beta1
+      kind: CustomResourceDefinition
+      metadata:
+        name: channels.eventing.knative.dev
+        labels:
+          knative.dev/crd-install: "true"
+      spec:
+        group: eventing.knative.dev
+        version: v1alpha1
+        names:
+          kind: Channel
+          plural: channels
+          singular: channel
+          categories:
+          - all
+          - knative
+          - eventing
+          shortNames:
+          - chan
+        scope: Namespaced
+        subresources:
+          status: {}
+        additionalPrinterColumns:
+          - name: Ready
+            type: string
+            JSONPath: ".status.conditions[?(@.type==\"Ready\")].status"
+          - name: Reason
+            type: string
+            JSONPath: ".status.conditions[?(@.type==\"Ready\")].reason"
+          - name: Age
+            type: date
+            JSONPath: .metadata.creationTimestamp
+        validation:
+          openAPIV3Schema:
+            properties:
+              spec:
+                properties:
+                  provisioner:
+                    type: object
+                    required:
+                      - apiVersion
+                      - kind
+                      - name
+                    properties:
+                      apiVersion:
+                        type: string
+                        minLength: 1
+                      kind:
+                        type: string
+                        minLength: 1
+                      name:
+                        type: string
+                        minLength: 1
+                  arguments:
+                    type: object
+                    additionalProperties: true
+                  subscribable:
+                    type: object
+                    properties:
+                      subscribers:
+                        type: array
+                        items:
+                          required:
+                            - ref
+                          properties:
+                            ref:
+                              type: object
+                              required:
+                                - namespace
+                                - name
+                                - uid
+                              properties:
+                                apiVersion:
+                                  type: string
+                                kind:
+                                  type: string
+                                name:
+                                  type: string
+                                  minLength: 1
+                                namespace:
+                                  type: string
+                                  minLength: 1
+                                uid:
+                                  type: string
+                                  minLength: 1
+                            subscriberURI:
+                              type: string
+                              minLength: 1
+                            replyURI:
+                              type: string
+                              minLength: 1
+    - apiVersion: apiextensions.k8s.io/v1beta1
+      kind: CustomResourceDefinition
+      metadata:
+        name: clusterchannelprovisioners.eventing.knative.dev
+        labels:
+          knative.dev/crd-install: "true"
+      spec:
+        group: eventing.knative.dev
+        version: v1alpha1
+        names:
+          kind: ClusterChannelProvisioner
+          plural: clusterchannelprovisioners
+          singular: clusterchannelprovisioner
+          categories:
+          - all
+          - knative
+          - eventing
+          - provisioner
+          shortNames:
+          - ccp
+        scope: Cluster
+        subresources:
+          status: {}
+        additionalPrinterColumns:
+          - name: Ready
+            type: string
+            JSONPath: ".status.conditions[?(@.type==\"Ready\")].status"
+          - name: Reason
+            type: string
+            JSONPath: ".status.conditions[?(@.type==\"Ready\")].reason"
+          - name: Age
+            type: date
+            JSONPath: .metadata.creationTimestamp
+    - apiVersion: apiextensions.k8s.io/v1beta1
+      kind: CustomResourceDefinition
+      metadata:
+        name: subscriptions.eventing.knative.dev
+        labels:
+          knative.dev/crd-install: "true"
+      spec:
+        group: eventing.knative.dev
+        version: v1alpha1
+        names:
+          kind: Subscription
+          plural: subscriptions
+          singular: subscription
+          categories:
+          - all
+          - knative
+          - eventing
+          shortNames:
+          - sub
+        scope: Namespaced
+        subresources:
+          status: {}
+        additionalPrinterColumns:
+          - name: Ready
+            type: string
+            JSONPath: ".status.conditions[?(@.type==\"Ready\")].status"
+          - name: Reason
+            type: string
+            JSONPath: ".status.conditions[?(@.type==\"Ready\")].reason"
+          - name: Age
+            type: date
+            JSONPath: .metadata.creationTimestamp
+        validation:
+          openAPIV3Schema:
+            properties:
+              spec:
+                required:
+                  - channel
+                properties:
+                  channel:
+                    type: object
+                    required:
+                      - apiVersion
+                      - kind
+                      - name
+                    properties:
+                      apiVersion:
+                        type: string
+                        minLength: 1
+                      kind:
+                        type: string
+                        pattern: "^Channel$"
+                      name:
+                        type: string
+                        minLength: 1
+                  subscriber:
+                    type: object
+                    properties:
+                      dnsName:
+                        type: string
+                        minLength: 1
+                      uri:
+                        type: string
+                        minLength: 1
+                      ref:
+                        type: object
+                        required:
+                          - apiVersion
+                          - kind
+                          - name
+                        properties:
+                          apiVersion:
+                            type: string
+                            minLength: 1
+                          kind:
+                            type: string
+                            minLength: 1
+                          name:
+                            type: string
+                            minLength: 1
+                  reply:
+                    type: object
+                    properties:
+                      channel:
+                        type: object
+                        required:
+                          - apiVersion
+                          - kind
+                          - name
+                        properties:
+                          apiVersion:
+                            type: string
+                            minLength: 1
+                          kind:
+                            type: string
+                            pattern: "^Channel$"
+                          name:
+                            type: string
+                            minLength: 1
+    - apiVersion: apiextensions.k8s.io/v1beta1
+      kind: CustomResourceDefinition
+      metadata:
+        name: triggers.eventing.knative.dev
+        labels:
+          knative.dev/crd-install: "true"
+      spec:
+        group: eventing.knative.dev
+        version: v1alpha1
+        names:
+          kind: Trigger
+          plural: triggers
+          singular: trigger
+          categories:
+          - all
+          - knative
+          - eventing
+        scope: Namespaced
+        subresources:
+          status: {}
+        additionalPrinterColumns:
+          - name: Ready
+            type: string
+            JSONPath: ".status.conditions[?(@.type==\"Ready\")].status"
+          - name: Reason
+            type: string
+            JSONPath: ".status.conditions[?(@.type==\"Ready\")].reason"
+          - name: Broker
+            type: string
+            JSONPath: .spec.broker
+          - name: Subscriber_URI
+            type: string
+            JSONPath: .status.subscriberURI
+          - name: Age
+            type: date
+            JSONPath: .metadata.creationTimestamp
+        validation:
+          openAPIV3Schema:
+            properties:
+              spec:
+                required:
+                  - subscriber
+                properties:
+                  broker:
+                    type: string
+                  filter:
+                    type: object
+                    properties:
+                      sourceAndType:
+                        type: object
+                        properties:
+                          type:
+                            type: string
+                          source:
+                            type: string
+                  subscriber:
+                    type: object
+                    properties:
+                      dnsName:
+                        type: string
+                        minLength: 1
+                      uri:
+                        type: string
+                        minLength: 1
+                      ref:
+                        type: object
+                        required:
+                          - apiVersion
+                          - kind
+                          - name
+                        properties:
+                          apiVersion:
+                            type: string
+                            minLength: 1
+                          kind:
+                            type: string
+                            minLength: 1
+                          name:
+                            type: string
+                            minLength: 1
   clusterServiceVersions: |-
     - apiVersion: operators.coreos.com/v1alpha1
       kind: ClusterServiceVersion
@@ -958,49 +958,497 @@ data:
         apiservicedefinitions: {}
         customresourcedefinitions:
           owned:
-          - kind: Install
+          - description: The Knative Eventing Installation
+            displayName: Install
+            kind: Install
             name: installs.eventing.knative.dev
             version: v1alpha1
-          - kind: Broker
-            name: brokers.eventing.knative.dev
-            version: v1alpha1
-          - kind: Channel
-            name: channels.eventing.knative.dev
-            version: v1alpha1
-          - kind: ClusterChannelProvisioner
-            name: clusterchannelprovisioners.eventing.knative.dev
-            version: v1alpha1
-          - kind: Subscription
-            name: subscriptions.eventing.knative.dev
-            version: v1alpha1
-          - kind: Trigger
-            name: triggers.eventing.knative.dev
-            version: v1alpha1
-          - kind: AwsSqsSource
+          - description: The Knative Eventing AwsSqsSource
+            displayName: AwsSqsSource
+            kind: AwsSqsSource
             name: awssqssources.sources.eventing.knative.dev
             version: v1alpha1
-          - kind: ContainerSource
+          - description: The Knative Eventing ContainerSource
+            displayName: ContainerSource
+            kind: ContainerSource
             name: containersources.sources.eventing.knative.dev
             version: v1alpha1
-          - kind: CronJobSource
+          - description: The Knative Eventing CronJobSource
+            displayName: CronJobSource
+            kind: CronJobSource
             name: cronjobsources.sources.eventing.knative.dev
             version: v1alpha1
-          - kind: GitHubSource
+          - description: The Knative Eventing GitHubSource
+            displayName: GitHubSource
+            kind: GitHubSource
             name: githubsources.sources.eventing.knative.dev
             version: v1alpha1
-          - kind: KubernetesEventSource
+          - description: The Knative Eventing KubernetesEventSource
+            displayName: KubernetesEventSource
+            kind: KubernetesEventSource
             name: kuberneteseventsources.sources.eventing.knative.dev
             version: v1alpha1
-          - kind: CamelSource
+          - description: The Knative Eventing CamelSource
+            displayName: CamelSource
+            kind: CamelSource
             name: camelsources.sources.eventing.knative.dev
             version: v1alpha1
-          - kind: KafkaSource
+          - description: The Knative Eventing KafkaSource
+            displayName: KafkaSource
+            kind: KafkaSource
             name: kafkasources.sources.eventing.knative.dev
+            version: v1alpha1
+          - description: The Knative Eventing Broker
+            displayName: Broker
+            kind: Broker
+            name: brokers.eventing.knative.dev
+            version: v1alpha1
+          - description: The Knative Eventing Channel
+            displayName: Channel
+            kind: Channel
+            name: channels.eventing.knative.dev
+            version: v1alpha1
+          - description: The Knative Eventing ClusterChannelProvisioner
+            displayName: ClusterChannelProvisioner
+            kind: ClusterChannelProvisioner
+            name: clusterchannelprovisioners.eventing.knative.dev
+            version: v1alpha1
+          - description: The Knative Eventing Subscription
+            displayName: Subscription
+            kind: Subscription
+            name: subscriptions.eventing.knative.dev
+            version: v1alpha1
+          - description: The Knative Eventing Trigger
+            displayName: Trigger
+            kind: Trigger
+            name: triggers.eventing.knative.dev
             version: v1alpha1
         description: Placeholder description
         displayName: Knative Eventing Operator
         install:
           spec:
+            clusterPermissions:
+            - rules:
+              - apiGroups:
+                - eventing.knative.dev
+                resources:
+                - triggers
+                - triggers/status
+                verbs:
+                - get
+                - list
+                - watch
+              - apiGroups:
+                - ""
+                resources:
+                - namespaces
+                - secrets
+                - configmaps
+                - services
+                - events
+                - serviceaccounts
+                verbs:
+                - get
+                - list
+                - create
+                - update
+                - delete
+                - patch
+                - watch
+              - apiGroups:
+                - networking.istio.io
+                resources:
+                - virtualservices
+                verbs:
+                - get
+                - list
+                - create
+                - update
+                - delete
+                - patch
+                - watch
+              - apiGroups:
+                - apps
+                resources:
+                - deployments
+                verbs:
+                - get
+                - list
+                - create
+                - update
+                - delete
+                - patch
+                - watch
+              - apiGroups:
+                - rbac.authorization.k8s.io
+                resources:
+                - rolebindings
+                verbs:
+                - get
+                - list
+                - create
+                - update
+                - delete
+                - patch
+                - watch
+              - apiGroups:
+                - eventing.knative.dev
+                resources:
+                - brokers
+                - brokers/status
+                - channels
+                - channels/status
+                - clusterchannelprovisioners
+                - clusterchannelprovisioners/status
+                - subscriptions
+                - subscriptions/status
+                - triggers
+                - triggers/status
+                verbs:
+                - get
+                - list
+                - create
+                - update
+                - delete
+                - patch
+                - watch
+              - apiGroups:
+                - ""
+                resources:
+                - configmaps
+                verbs:
+                - get
+                - list
+                - watch
+              - apiGroups:
+                - ""
+                resources:
+                - secrets
+                verbs:
+                - get
+                - create
+              - apiGroups:
+                - apps
+                resources:
+                - deployments
+                - deployments/finalizers
+                verbs:
+                - get
+                - list
+                - create
+                - update
+                - delete
+                - patch
+                - watch
+              - apiGroups:
+                - admissionregistration.k8s.io
+                resources:
+                - mutatingwebhookconfigurations
+                verbs:
+                - get
+                - list
+                - create
+                - update
+                - delete
+                - patch
+                - watch
+              - apiGroups:
+                - eventing.knative.dev
+                resources:
+                - brokers
+                - brokers/status
+                - channels
+                - channels/status
+                - clusterchannelprovisioners
+                - clusterchannelprovisioners/status
+                - subscriptions
+                - subscriptions/status
+                - triggers
+                - triggers/status
+                verbs:
+                - get
+                - list
+                - watch
+              - apiGroups:
+                - sources.eventing.knative.dev
+                resources:
+                - awssqssources
+                - containersources
+                - cronjobsources
+                - githubsources
+                - kuberneteseventsources
+                verbs:
+                - get
+                - list
+                - watch
+                - create
+                - update
+                - patch
+                - delete
+              - apiGroups:
+                - sources.eventing.knative.dev
+                resources:
+                - awssqssources/status
+                - containersources/status
+                - cronjobsources/status
+                - githubsources/status
+                - kuberneteseventsources/status
+                verbs:
+                - get
+                - update
+                - patch
+              - apiGroups:
+                - apps
+                resources:
+                - deployments
+                verbs:
+                - get
+                - list
+                - watch
+                - create
+                - update
+                - patch
+                - delete
+              - apiGroups:
+                - eventing.knative.dev
+                resources:
+                - channels
+                - brokers
+                verbs:
+                - get
+                - list
+                - watch
+              - apiGroups:
+                - serving.knative.dev
+                resources:
+                - services
+                verbs:
+                - get
+                - list
+                - watch
+                - create
+                - update
+                - patch
+                - delete
+              - apiGroups:
+                - ""
+                resources:
+                - secrets
+                verbs:
+                - get
+                - list
+                - watch
+              - apiGroups:
+                - ""
+                resources:
+                - events
+                verbs:
+                - get
+                - list
+                - watch
+                - create
+                - update
+                - patch
+                - delete
+              - apiGroups:
+                - sources.eventing.knative.dev
+                resources:
+                - kafkasources
+                - kafkasources/finalizers
+                - services
+                verbs:
+                - get
+                - list
+                - watch
+                - create
+                - update
+                - patch
+                - delete
+              - apiGroups:
+                - sources.eventing.knative.dev
+                resources:
+                - kafkasources/status
+                - services
+                verbs:
+                - get
+                - update
+                - patch
+              - apiGroups:
+                - apps
+                resources:
+                - deployments
+                verbs:
+                - get
+                - list
+                - watch
+                - create
+                - update
+                - patch
+                - delete
+              - apiGroups:
+                - ""
+                resources:
+                - pods
+                - services
+                - endpoints
+                - persistentvolumeclaims
+                - events
+                - configmaps
+                - secrets
+                verbs:
+                - get
+                - list
+                - watch
+                - create
+                - update
+                - patch
+                - delete
+              - apiGroups:
+                - eventing.knative.dev
+                resources:
+                - channels
+                - services
+                verbs:
+                - get
+                - list
+                - watch
+                - create
+                - update
+                - patch
+                - delete
+              - apiGroups:
+                - serving.knative.dev
+                resources:
+                - services
+                - routes
+                verbs:
+                - get
+                - list
+                - watch
+                - create
+                - update
+                - patch
+                - delete
+              - apiGroups:
+                - apps
+                resources:
+                - deployments
+                verbs:
+                - get
+                - list
+                - watch
+                - create
+                - update
+                - patch
+                - delete
+              - apiGroups:
+                - ""
+                resources:
+                - events
+                verbs:
+                - get
+                - list
+                - watch
+                - create
+                - update
+                - patch
+                - delete
+              - apiGroups:
+                - sources.eventing.knative.dev
+                resources:
+                - camelsources
+                verbs:
+                - get
+                - list
+                - watch
+                - create
+                - update
+                - patch
+                - delete
+              - apiGroups:
+                - sources.eventing.knative.dev
+                resources:
+                - camelsources/status
+                - camelsources/finalizers
+                verbs:
+                - get
+                - update
+                - patch
+              - apiGroups:
+                - serving.knative.dev
+                resources:
+                - services
+                verbs:
+                - get
+                - list
+                - watch
+              - apiGroups:
+                - eventing.knative.dev
+                resources:
+                - channels
+                - brokers
+                verbs:
+                - get
+                - list
+                - watch
+              - apiGroups:
+                - camel.apache.org
+                resources:
+                - '*'
+                verbs:
+                - get
+                - list
+                - watch
+                - create
+                - update
+                - patch
+                - delete
+              - apiGroups:
+                - security.openshift.io
+                resourceNames:
+                - privileged
+                - anyuid
+                resources:
+                - securitycontextconstraints
+                verbs:
+                - use
+              - apiGroups:
+                - extensions
+                resources:
+                - deployments/finalizers
+                verbs:
+                - update
+              - apiGroups:
+                - build.knative.dev
+                resources:
+                - '*/finalizers'
+                verbs:
+                - update
+              - apiGroups:
+                - policy
+                resources:
+                - podsecuritypolicies
+                verbs:
+                - create
+                - update
+                - patch
+                - get
+              - apiGroups:
+                - build.knative.dev
+                resources:
+                - '*'
+                verbs:
+                - '*'
+              - apiGroups:
+                - apps
+                resources:
+                - deployments
+                verbs:
+                - get
+                - create
+                - update
+                - delete
+              serviceAccountName: knative-eventing-operator
             deployments:
             - name: knative-eventing-operator
               spec:
@@ -1028,7 +1476,11 @@ data:
                             fieldPath: metadata.name
                       - name: OPERATOR_NAME
                         value: knative-eventing-operator
-                      image: quay.io/openshift-knative/knative-eventing-operator:v0.4.1
+                      image: quay.io/openshift-knative/knative-eventing-operator:v0.5.0
+                      args:
+                        - --olm
+                        - --install
+                        - --filename=https://raw.githubusercontent.com/openshift/knative-eventing/release-v0.5.0/openshift/release/knative-eventing-v0.5.0.yaml,https://raw.githubusercontent.com/openshift/knative-eventing-sources/release-v0.5.0/openshift/release/knative-eventing-sources-v0.5.0.yaml
                       imagePullPolicy: Always
                       name: knative-eventing-operator
                       resources: {}
@@ -1095,8 +1547,314 @@ data:
         - supported: true
           type: AllNamespaces
         maturity: alpha
-        provider: {}
+        keywords:
+        - serverless
+        - eventing
+        - camel
+        - kafka
+        maintainers:
+        - email: mwessend@redhat.com
+          name: Matthias Wessendorf
+        provider:
+          name: Knative Community
+        replaces: knative-eventing.v0.4.1
         version: 0.5.0
+    - apiVersion: operators.coreos.com/v1alpha1
+      kind: ClusterServiceVersion
+      metadata:
+        name: knative-eventing.v0.4.1
+      spec:
+        displayName: Knative Eventing
+        description: |
+          Kubernetes-native Eventing resource
+        version: 0.4.1
+        maturity: alpha
+
+        installModes:
+        - supported: true
+          type: OwnNamespace
+        - supported: true
+          type: SingleNamespace
+        - supported: false
+          type: MultiNamespace
+        - supported: true
+          type: AllNamespaces
+
+        install:
+          strategy: deployment
+          spec:
+            clusterPermissions:
+
+            - serviceAccountName: eventing-controller
+              rules:
+              - apiGroups:
+                - '*'
+                resources:
+                - '*'
+                verbs:
+                - '*'
+              - nonResourceURLs:
+                - '*'
+                verbs:
+                - '*'
+
+            - serviceAccountName: in-memory-channel-controller
+              rules:
+              - apiGroups:
+                - eventing.knative.dev
+                resources:
+                - channels
+                - channels/status
+                - clusterchannelprovisioners
+                - clusterchannelprovisioners/status
+                verbs:
+                - get
+                - list
+                - watch
+                - update
+              - apiGroups:
+                - eventing.knative.dev
+                resources:
+                - '*/finalizers'
+                verbs:
+                - update
+              - apiGroups:
+                - ""
+                resources:
+                - configmaps
+                - services
+                verbs:
+                - get
+                - list
+                - watch
+                - create
+              - apiGroups:
+                - ""
+                resourceNames:
+                - in-memory-channel-clusterbus
+                resources:
+                - services
+                verbs:
+                - delete
+              - apiGroups:
+                - ""
+                resources:
+                - services
+                verbs:
+                - update
+              - apiGroups:
+                - ""
+                resourceNames:
+                - in-memory-channel-dispatcher-config-map
+                resources:
+                - configmaps
+                verbs:
+                - update
+              - apiGroups:
+                - networking.istio.io
+                resources:
+                - virtualservices
+                verbs:
+                - get
+                - list
+                - watch
+                - create
+                - update
+              - apiGroups:
+                - ""
+                resources:
+                - events
+                verbs:
+                - create
+                - patch
+                - update
+
+            - serviceAccountName: in-memory-channel-dispatcher
+              rules:
+              - apiGroups:
+                - ""
+                resources:
+                - configmaps
+                verbs:
+                - get
+                - list
+                - watch
+
+              # The above rules are from upstream. The remaining are
+              # required for OpenShift
+
+              - apiGroups:
+                - security.openshift.io
+                resources:
+                - securitycontextconstraints
+                verbs:
+                - use
+                resourceNames:
+                - privileged
+
+            - serviceAccountName: controller-manager
+              rules:
+              - apiGroups:
+                - sources.eventing.knative.dev
+                resources:
+                - awssqssources
+                - containersources
+                - cronjobsources
+                - githubsources
+                - kuberneteseventsources
+                verbs:
+                - get
+                - list
+                - watch
+                - create
+                - update
+                - patch
+                - delete
+              - apiGroups:
+                - sources.eventing.knative.dev
+                resources:
+                - awssqssources/status
+                - containersources/status
+                - cronjobsources/status
+                - githubsources/status
+                - kuberneteseventsources/status
+                verbs:
+                - get
+                - update
+                - patch
+              - apiGroups:
+                - apps
+                resources:
+                - deployments
+                verbs:
+                - get
+                - list
+                - watch
+                - create
+                - update
+                - patch
+                - delete
+              - apiGroups:
+                - eventing.knative.dev
+                resources:
+                - channels
+                verbs:
+                - get
+                - list
+                - watch
+              - apiGroups:
+                - serving.knative.dev
+                resources:
+                - services
+                verbs:
+                - get
+                - list
+                - watch
+                - create
+                - update
+                - patch
+                - delete
+              - apiGroups:
+                - ""
+                resources:
+                - secrets
+                verbs:
+                - get
+                - list
+                - watch
+              - apiGroups:
+                - ""
+                resources:
+                - events
+                verbs:
+                - get
+                - list
+                - watch
+                - create
+                - update
+                - patch
+                - delete
+
+            deployments:
+            - name: knative-eventing-operator
+              spec:
+                replicas: 1
+                selector:
+                  matchLabels:
+                    name: knative-eventing-operator
+                template:
+                  metadata:
+                    labels:
+                      name: knative-eventing-operator
+                  spec:
+                    serviceAccountName: eventing-controller
+                    containers:
+                      - name: knative-eventing-operator
+                        image: quay.io/openshift-knative/knative-eventing-operator:v0.4.1
+                        command:
+                        - knative-eventing-operator
+                        args:
+                          - --olm
+                          - --install
+                        env:
+                          - name: WATCH_NAMESPACE
+                            valueFrom:
+                              fieldRef:
+                                fieldPath: metadata.namespace
+                          - name: POD_NAME
+                            valueFrom:
+                              fieldRef:
+                                fieldPath: metadata.name
+                          - name: OPERATOR_NAME
+                            value: "knative-eventing-operator"
+
+        customresourcedefinitions:
+          owned:
+            - name: channels.eventing.knative.dev
+              kind: Channel
+              description: Channel
+              displayName: Channel
+              version: v1alpha1
+            - name: clusterchannelprovisioners.eventing.knative.dev
+              kind: ClusterChannelProvisioner
+              description: ClusterChannelProvisioner
+              displayName: ClusterChannelProvisioner
+              version: v1alpha1
+            - name: subscriptions.eventing.knative.dev
+              kind: Subscription
+              description: Subscription
+              displayName: Subscription
+              version: v1alpha1
+            - name: containersources.sources.eventing.knative.dev
+              kind: ContainerSource
+              description: ContainerSource
+              displayName: ContainerSource
+              version: v1alpha1
+            - name: githubsources.sources.eventing.knative.dev
+              kind: GitHubSource
+              description: GitHubSource
+              displayName: GitHubSource
+              version: v1alpha1
+            - name: kuberneteseventsources.sources.eventing.knative.dev
+              kind: KubernetesEventSource
+              description: KubernetesEventSource
+              displayName: KubernetesEventSource
+              version: v1alpha1
+            - name: cronjobsources.sources.eventing.knative.dev
+              kind: CronJobSource
+              description: CronJobSource
+              displayName: CronJobSource
+              version: v1alpha1
+            - name: awssqssources.sources.eventing.knative.dev
+              kind: AwsSqsSource
+              description: AwsSqsSource
+              displayName: AwsSqsSource
+              version: v1alpha1
+            - description: Knative Eventing Installation
+              displayName: Install Operator
+              kind: Install
+              name: installs.eventing.knative.dev
+              version: v1alpha1
   packages: |-
     - packageName: knative-eventing-operator
       channels:
