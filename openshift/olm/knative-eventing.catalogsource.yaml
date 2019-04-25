@@ -1560,7 +1560,6 @@ data:
           type: MultiNamespace
         - supported: true
           type: AllNamespaces
-        maturity: alpha
         keywords:
         - serverless
         - eventing
@@ -1569,6 +1568,7 @@ data:
         maintainers:
         - email: mwessend@redhat.com
           name: Matthias Wessendorf
+        maturity: alpha
         provider:
           name: Knative Community
         replaces: knative-eventing.v0.4.1
@@ -1716,22 +1716,6 @@ data:
                 - cronjobsources
                 - githubsources
                 - kuberneteseventsources
-                verbs:
-                - get
-                - list
-                - watch
-                - create
-                - update
-                - patch
-                - delete
-              - apiGroups:
-                - sources.eventing.knative.dev
-                resources:
-                - awssqssources/finalizers
-                - containersources/finalizers
-                - cronjobsources/finalizers
-                - githubsources/finalizers
-                - kuberneteseventsources/finalizers
                 verbs:
                 - get
                 - list
