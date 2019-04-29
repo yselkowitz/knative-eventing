@@ -81,6 +81,10 @@ data:
                       name: knative-eventing-operator
                   spec:
                     containers:
+                    - args:
+                      - --install
+                      - --namespace=$WATCH_NAMESPACE
+                      - --filename=https://raw.githubusercontent.com/openshift/knative-eventing/release-v0.5.0/openshift/release/knative-eventing-v0.5.0.yaml,https://raw.githubusercontent.com/openshift/knative-eventing-sources/release-v0.5.0/openshift/release/knative-eventing-sources-v0.5.0.yaml
                       command:
                       - knative-eventing-operator
                       env:
@@ -95,10 +99,6 @@ data:
                       - name: OPERATOR_NAME
                         value: knative-eventing-operator
                       image: quay.io/openshift-knative/knative-eventing-operator:v0.5.0
-                      args:
-                        - --install
-                        - --namespace=$WATCH_NAMESPACE
-                        - --filename=https://raw.githubusercontent.com/openshift/knative-eventing/release-v0.5.0/openshift/release/knative-eventing-v0.5.0.yaml,https://raw.githubusercontent.com/openshift/knative-eventing-sources/release-v0.5.0/openshift/release/knative-eventing-sources-v0.5.0.yaml
                       imagePullPolicy: Always
                       name: knative-eventing-operator
                       resources: {}
