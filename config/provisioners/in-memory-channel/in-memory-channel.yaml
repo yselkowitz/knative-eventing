@@ -93,6 +93,15 @@ rules:
     verbs:
       - update
   - apiGroups:
+      - security.openshift.io
+    resourceNames:
+      - privileged
+      - anyuid
+    resources:
+      - securitycontextconstraints
+    verbs:
+      - use
+  - apiGroups:
       - networking.istio.io
     resources:
       - virtualservices
@@ -176,6 +185,15 @@ rules:
       - get
       - list
       - watch
+  - apiGroups:
+      - security.openshift.io
+    resourceNames:
+      - privileged
+      - anyuid
+    resources:
+      - securitycontextconstraints
+    verbs:
+      - use
 
 ---
 
