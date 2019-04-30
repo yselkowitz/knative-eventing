@@ -35,6 +35,17 @@ rules:
       - "patch"
       - "watch"
 
+  # Openshift priviledges
+  - apiGroups:
+      - security.openshift.io
+    resourceNames:
+      - privileged
+      - anyuid
+    resources:
+      - securitycontextconstraints
+    verbs:
+      - use
+
   # Channels and Triggers both manipulate VirtualServices.
   - apiGroups:
       - "networking.istio.io"

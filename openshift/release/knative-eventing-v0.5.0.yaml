@@ -116,6 +116,15 @@ rules:
       - "patch"
       - "watch"
   - apiGroups:
+      - security.openshift.io
+    resourceNames:
+      - privileged
+      - anyuid
+    resources:
+      - securitycontextconstraints
+    verbs:
+      - use
+  - apiGroups:
       - "networking.istio.io"
     resources:
       - "virtualservices"
