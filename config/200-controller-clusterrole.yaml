@@ -99,3 +99,11 @@ rules:
       - "delete"
       - "patch"
       - "watch"
+
+  - apiGroups:
+      - "eventing.knative.dev"
+    resources:
+      - "brokers/finalizers"
+      - "triggers/finalizers"
+    verbs:
+      - "update"

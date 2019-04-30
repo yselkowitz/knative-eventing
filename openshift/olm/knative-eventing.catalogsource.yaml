@@ -43,145 +43,6 @@ data:
     - apiVersion: operators.coreos.com/v1alpha1
       kind: ClusterServiceVersion
       metadata:
-        annotations:
-          capabilities: Basic Install
-        name: knative-eventing-operator.v0.5.0
-        namespace: placeholder
-      spec:
-        apiservicedefinitions: {}
-        customresourcedefinitions:
-          owned:
-          - description: Knative Eventing Installation
-            displayName: Install Operator
-            kind: Install
-            name: installs.eventing.knative.dev
-            version: v1alpha1
-        description: Placeholder description
-        displayName: Knative Eventing Operator
-        install:
-          spec:
-            clusterPermissions:
-            - rules:
-              - apiGroups:
-                - '*'
-                resources:
-                - '*'
-                verbs:
-                - '*'
-              serviceAccountName: knative-eventing-operator
-            deployments:
-            - name: knative-eventing-operator
-              spec:
-                replicas: 1
-                selector:
-                  matchLabels:
-                    name: knative-eventing-operator
-                strategy: {}
-                template:
-                  metadata:
-                    labels:
-                      name: knative-eventing-operator
-                  spec:
-                    containers:
-                    - args:
-                      - --install
-                      - --namespace=$WATCH_NAMESPACE
-                      - --filename=https://raw.githubusercontent.com/openshift/knative-eventing/release-v0.5.0/openshift/release/knative-eventing-v0.5.0.yaml,https://raw.githubusercontent.com/openshift/knative-eventing-sources/release-v0.5.0/openshift/release/knative-eventing-sources-v0.5.0.yaml
-                      command:
-                      - knative-eventing-operator
-                      env:
-                      - name: WATCH_NAMESPACE
-                        valueFrom:
-                          fieldRef:
-                            fieldPath: metadata.namespace
-                      - name: POD_NAME
-                        valueFrom:
-                          fieldRef:
-                            fieldPath: metadata.name
-                      - name: OPERATOR_NAME
-                        value: knative-eventing-operator
-                      image: quay.io/openshift-knative/knative-eventing-operator:v0.5.0
-                      imagePullPolicy: Always
-                      name: knative-eventing-operator
-                      resources: {}
-                    serviceAccountName: knative-eventing-operator
-            permissions:
-            - rules:
-              - apiGroups:
-                - ""
-                resources:
-                - pods
-                - services
-                - endpoints
-                - persistentvolumeclaims
-                - events
-                - configmaps
-                - secrets
-                verbs:
-                - '*'
-              - apiGroups:
-                - ""
-                resources:
-                - namespaces
-                verbs:
-                - get
-              - apiGroups:
-                - apps
-                resources:
-                - deployments
-                - daemonsets
-                - replicasets
-                - statefulsets
-                verbs:
-                - '*'
-              - apiGroups:
-                - monitoring.coreos.com
-                resources:
-                - servicemonitors
-                verbs:
-                - get
-                - create
-              - apiGroups:
-                - apps
-                resourceNames:
-                - knative-eventing-operator
-                resources:
-                - deployments/finalizers
-                verbs:
-                - update
-              - apiGroups:
-                - eventing.knative.dev
-                resources:
-                - '*'
-                verbs:
-                - '*'
-              serviceAccountName: knative-eventing-operator
-          strategy: deployment
-        installModes:
-        - supported: true
-          type: OwnNamespace
-        - supported: true
-          type: SingleNamespace
-        - supported: false
-          type: MultiNamespace
-        - supported: true
-          type: AllNamespaces
-        keywords:
-        - serverless
-        - eventing
-        - camel
-        - kafka
-        maintainers:
-        - email: mwessend@redhat.com
-          name: Matthias Wessendorf
-        maturity: alpha
-        provider:
-          name: Knative Community
-        replaces: knative-eventing.v0.4.1
-        version: 0.5.0
-    - apiVersion: operators.coreos.com/v1alpha1
-      kind: ClusterServiceVersion
-      metadata:
         name: knative-eventing.v0.4.1
       spec:
         displayName: Knative Eventing
@@ -475,6 +336,146 @@ data:
               kind: Install
               name: installs.eventing.knative.dev
               version: v1alpha1
+    - apiVersion: operators.coreos.com/v1alpha1
+      kind: ClusterServiceVersion
+      metadata:
+        annotations:
+          alm-examples: '[{"apiVersion":"eventing.knative.dev/v1alpha1","kind":"Install","metadata":{"name":"knative-eventing"},"spec":{}}]'
+          capabilities: Basic Install
+        name: knative-eventing-operator.v0.5.0
+        namespace: placeholder
+      spec:
+        apiservicedefinitions: {}
+        customresourcedefinitions:
+          owned:
+          - description: Represents an installation of a particular version of Knative Eventing
+            displayName: Knative Eventing
+            kind: Install
+            name: installs.eventing.knative.dev
+            version: v1alpha1
+        description: Placeholder description
+        displayName: Knative Eventing Operator
+        install:
+          spec:
+            clusterPermissions:
+            - rules:
+              - apiGroups:
+                - '*'
+                resources:
+                - '*'
+                verbs:
+                - '*'
+              serviceAccountName: knative-eventing-operator
+            deployments:
+            - name: knative-eventing-operator
+              spec:
+                replicas: 1
+                selector:
+                  matchLabels:
+                    name: knative-eventing-operator
+                strategy: {}
+                template:
+                  metadata:
+                    labels:
+                      name: knative-eventing-operator
+                  spec:
+                    containers:
+                    - args:
+                      - --install
+                      - --namespace=$WATCH_NAMESPACE
+                      - --filename=https://raw.githubusercontent.com/openshift/knative-eventing/release-v0.5.0/openshift/release/knative-eventing-v0.5.0.yaml,https://raw.githubusercontent.com/openshift/knative-eventing-sources/release-v0.5.0/openshift/release/knative-eventing-sources-v0.5.0.yaml
+                      command:
+                      - knative-eventing-operator
+                      env:
+                      - name: WATCH_NAMESPACE
+                        valueFrom:
+                          fieldRef:
+                            fieldPath: metadata.namespace
+                      - name: POD_NAME
+                        valueFrom:
+                          fieldRef:
+                            fieldPath: metadata.name
+                      - name: OPERATOR_NAME
+                        value: knative-eventing-operator
+                      image: quay.io/openshift-knative/knative-eventing-operator:v0.5.0
+                      imagePullPolicy: Always
+                      name: knative-eventing-operator
+                      resources: {}
+                    serviceAccountName: knative-eventing-operator
+            permissions:
+            - rules:
+              - apiGroups:
+                - ""
+                resources:
+                - pods
+                - services
+                - endpoints
+                - persistentvolumeclaims
+                - events
+                - configmaps
+                - secrets
+                verbs:
+                - '*'
+              - apiGroups:
+                - ""
+                resources:
+                - namespaces
+                verbs:
+                - get
+              - apiGroups:
+                - apps
+                resources:
+                - deployments
+                - daemonsets
+                - replicasets
+                - statefulsets
+                verbs:
+                - '*'
+              - apiGroups:
+                - monitoring.coreos.com
+                resources:
+                - servicemonitors
+                verbs:
+                - get
+                - create
+              - apiGroups:
+                - apps
+                resourceNames:
+                - knative-eventing-operator
+                resources:
+                - deployments/finalizers
+                verbs:
+                - update
+              - apiGroups:
+                - eventing.knative.dev
+                resources:
+                - '*'
+                verbs:
+                - '*'
+              serviceAccountName: knative-eventing-operator
+          strategy: deployment
+        installModes:
+        - supported: true
+          type: OwnNamespace
+        - supported: true
+          type: SingleNamespace
+        - supported: false
+          type: MultiNamespace
+        - supported: true
+          type: AllNamespaces
+        keywords:
+        - serverless
+        - eventing
+        - camel
+        - kafka
+        maintainers:
+        - email: mwessend@redhat.com
+          name: Matthias Wessendorf
+        maturity: alpha
+        provider:
+          name: Knative Community
+        replaces: knative-eventing.v0.4.1
+        version: 0.5.0
   packages: |-
     - packageName: knative-eventing-operator
       channels:
