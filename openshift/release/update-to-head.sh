@@ -4,9 +4,8 @@
 # Usage: update-to-head.sh
 
 # Reset release-next to upstream/master.
-git checkout release-next
 git fetch upstream master
-git reset --hard upstream/master
+git checkout upstream/master -B release-next
 
 # Update openshift's master and take all needed files from there.
 git fetch openshift master
