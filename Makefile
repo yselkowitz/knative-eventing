@@ -2,7 +2,7 @@
 
 CGO_ENABLED=0
 GOOS=linux
-CORE_IMAGES=./cmd/apiserver_receive_adapter ./cmd/broker/ingress/ ./cmd/broker/filter/ ./cmd/controller/ ./cmd/cronjob_receive_adapter ./cmd/pong/ ./cmd/sendevent/ ./cmd/sources-controller ./cmd/webhook/
+CORE_IMAGES=./cmd/apiserver_receive_adapter ./cmd/broker/ingress/ ./cmd/broker/filter/ ./cmd/controller/ ./cmd/cronjob_receive_adapter ./cmd/pong/ ./cmd/sendevent/ ./cmd/sources_controller ./cmd/webhook/
 TEST_IMAGES=$(shell find ./test/test_images -mindepth 1 -maxdepth 1 -type d)
 
 install:
@@ -41,6 +41,10 @@ generate-dockerfiles:
 generate-release:
 	./openshift/release/generate-release.sh $(RELEASE)
 .PHONY: generate-release
+
+generate-kafka:
+	./openshift/release/generate-kafka.sh $(RELEASE)
+.PHONY: generate-kafka
 
 # Generates a ci-operator configuration for a specific branch.
 generate-ci-config:
