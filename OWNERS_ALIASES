@@ -10,6 +10,10 @@ aliases:
   - vdemeester
   - evanchooly
   - arilivigni
+  - matzew
+  - lberk
+  - alanconway
+  - syedriko
   eventing-reviewers:
   - alanfx
   - mgencur
@@ -22,3 +26,6 @@ aliases:
   - evanchooly
   - arilivigni
   - matzew
+  - lberk
+  - syedriko
+  - alanconway
