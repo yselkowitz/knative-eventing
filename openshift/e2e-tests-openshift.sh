@@ -26,6 +26,16 @@ readonly TARGET_IMAGE_PREFIX="$INTERNAL_REGISTRY/$EVENTING_NAMESPACE/knative-eve
 
 env
 
+# Loops until duration (car) is exceeded or command (cdr) returns non-zero
+function timeout_non_zero() {
+  SECONDS=0; TIMEOUT=$1; shift
+  while eval $*; do
+    sleep 5
+    [[ $SECONDS -gt $TIMEOUT ]] && echo "ERROR: Timed out" && return 1
+  done
+  return 0
+}
+
 function install_istio(){
   header "Installing Istio"
 
@@ -86,7 +96,7 @@ spec:
 EOF
 
   # Wait until at least the Istio ControlPlane is installed
-  timeout 900 '[[ $(oc get ControlPlane/basic-install --template="{{range .status.conditions}}{{printf \"%s=%s, reason=%s, message=%s\n\n\" .type .status .reason .message}}{{end}}" | grep -c Installed=True) -eq 0 ]]' || return 1
+  timeout_non_zero 900 '[[ $(oc get ControlPlane/basic-install --template="{{range .status.conditions}}{{printf \"%s=%s, reason=%s, message=%s\n\n\" .type .status .reason .message}}{{end}}" | grep -c Installed=True) -eq 0 ]]' || return 1
 
   # Scale down unused services deployed by the istio operator
   oc scale -n istio-system --replicas=0 deployment/grafana
