@@ -8,7 +8,7 @@ set -x
 readonly BUILD_VERSION=v0.4.0
 readonly BUILD_RELEASE=https://github.com/knative/build/releases/download/${BUILD_VERSION}/build.yaml
 readonly MAISTRA_VERSION="0.10"
-readonly SERVING_VERSION=v0.5.1
+readonly SERVING_VERSION=v0.5.2
 readonly SERVING_RELEASE=https://github.com/knative/serving/releases/download/${SERVING_VERSION}/serving.yaml
 # We use nightly, to match the fact we do build here the latest from EVENTING
 readonly EVENTING_SOURCES_RELEASE=https://storage.googleapis.com/knative-nightly/eventing-sources/latest/eventing-sources.yaml
@@ -52,7 +52,7 @@ function install_istio(){
 apiVersion: istio.openshift.com/v1alpha3
 kind: ControlPlane
 metadata:
-  name: basic-install
+  name: minimal-istio
 spec:
   istio:
     global:
@@ -60,35 +60,34 @@ spec:
       hub: "maistra"
       tag: ${MAISTRA_VERSION}.0
       proxy:
-        resources:
-          requests:
-            cpu: 100m
-            memory: 128Mi
-          limits:
-            cpu: 200m
-            memory: 128Mi
-    sidecarInjectorWebhook:
+        autoInject: disabled
+      useMCP: false
+      disablePolicyChecks: false
+      omitSidecarInjectorConfigMap: true
+    galley:
       enabled: false
     gateways:
-      istio-egressgateway:
-        autoscaleEnabled: false
       istio-ingressgateway:
         autoscaleEnabled: false
-        ior_enabled: false
+      istio-egressgateway:
+        enabled: false
+    grafana:
+      enabled: false
     mixer:
+      enabled: false
       policy:
-        autoscaleEnabled: false
+        enabled: false
       telemetry:
-        autoscaleEnabled: false
-        resources:
-          requests:
-            cpu: 100m
-            memory: 1G
-          limits:
-            cpu: 200m
-            memory: 2G
+        enabled: false
     pilot:
       autoscaleEnabled: false
+      sidecar: false
+    prometheus:
+      enabled: false
+    security:
+      enabled: false
+    sidecarInjectorWebhook:
+      enabled: false
     kiali:
       enabled: false
     tracing:
@@ -96,10 +95,7 @@ spec:
 EOF
 
   # Wait until at least the Istio ControlPlane is installed
-  timeout_non_zero 900 '[[ $(oc get ControlPlane/basic-install --template="{{range .status.conditions}}{{printf \"%s=%s, reason=%s, message=%s\n\n\" .type .status .reason .message}}{{end}}" | grep -c Installed=True) -eq 0 ]]' || return 1
-
-  # Scale down unused services deployed by the istio operator
-  oc scale -n istio-system --replicas=0 deployment/grafana
+  timeout_non_zero 900 '[[ $(oc get ControlPlane/minimal-istio --template="{{range .status.conditions}}{{printf \"%s=%s, reason=%s, message=%s\n\n\" .type .status .reason .message}}{{end}}" | grep -c Installed=True) -eq 0 ]]' || return 1
   
   header "Istio Installed successfully"
 }
@@ -117,49 +113,70 @@ function install_knative_build(){
   header "Knative Build installed successfully"
 }
 
-
 function install_knative_serving(){
   header "Installing Knative Serving"
 
-  # Grant the necessary privileges to the service accounts Knative will use:
-  oc adm policy add-scc-to-user anyuid -z controller -n knative-serving
-  oc adm policy add-scc-to-user anyuid -z autoscaler -n knative-serving
-  oc adm policy add-cluster-role-to-user cluster-admin -z controller -n knative-serving
+  # Install CatalogSources in OLM namespace
+  oc apply -n $OLM_NAMESPACE -f https://raw.githubusercontent.com/openshift/knative-serving/release-${SERVING_VERSION}/openshift/olm/knative-serving.catalogsource.yaml
+  timeout 900 '[[ $(oc get pods -n $OLM_NAMESPACE | grep -c knative) -eq 0 ]]' || return 1
+  wait_until_pods_running $OLM_NAMESPACE
 
-  curl -L $SERVING_RELEASE \
-  | sed 's/LoadBalancer/NodePort/' \
-  | oc apply --filename -
+  # Deploy Knative Operators Serving
+  deploy_knative_operator serving
+
+  # Wait for 6 pods to appear first
+  timeout 900 '[[ $(oc get pods -n $SERVING_NAMESPACE --no-headers | wc -l) -lt 6 ]]' || return 1
+  wait_until_pods_running knative-serving || return 1
 
   enable_knative_interaction_with_registry
 
-  echo ">> Patching Istio"
-  for gateway in istio-ingressgateway cluster-local-gateway istio-egressgateway; do
-    if kubectl get svc -n istio-system ${gateway} > /dev/null 2>&1 ; then
-      kubectl patch hpa -n istio-system ${gateway} --patch '{"spec": {"maxReplicas": 1}}'
-      kubectl set resources deploy -n istio-system ${gateway} \
-        -c=istio-proxy --requests=cpu=50m 2> /dev/null
-    fi
-  done
-
-  # There are reports of Envoy failing (503) when istio-pilot is overloaded.
-  # We generously add more pilot instances here to verify if we can reduce flakes.
-  if kubectl get hpa -n istio-system istio-pilot 2>/dev/null; then
-    # If HPA exists, update it.  Since patching will return non-zero if no change
-    # is made, we don't return on failure here.
-    kubectl patch hpa -n istio-system istio-pilot \
-      --patch '{"spec": {"minReplicas": 3, "maxReplicas": 10, "targetCPUUtilizationPercentage": 60}}' \
-      `# Ignore error messages to avoid causing red herrings in the tests` \
-      2>/dev/null
-  else
-    # Some versions of Istio doesn't provide an HPA for pilot.
-    kubectl autoscale -n istio-system deploy istio-pilot --min=3 --max=10 --cpu-percent=60 || return 1
-  fi
-
-  wait_until_pods_running knative-serving || return 1
+  # Wait for 2 pods to appear first
+  timeout 900 '[[ $(oc get pods -n istio-system --no-headers | wc -l) -lt 2 ]]' || return 1
   wait_until_service_has_external_ip istio-system istio-ingressgateway || fail_test "Ingress has no external IP"
+
   wait_until_hostname_resolves $(kubectl get svc -n istio-system istio-ingressgateway -o jsonpath="{.status.loadBalancer.ingress[0].hostname}")
 
-  header "Knative Serving installed successfully"
+  header "Knative Serving Installed successfully"
+}
+
+function deploy_knative_operator(){
+  local COMPONENT="knative-$1"
+
+  cat <<-EOF | oc apply -f -
+	apiVersion: v1
+	kind: Namespace
+	metadata:
+	  name: ${COMPONENT}
+	EOF
+  if oc get crd operatorgroups.operators.coreos.com >/dev/null 2>&1; then
+    cat <<-EOF | oc apply -f -
+	apiVersion: operators.coreos.com/v1
+	kind: OperatorGroup
+	metadata:
+	  name: ${COMPONENT}
+	  namespace: ${COMPONENT}
+	EOF
+  fi
+  cat <<-EOF | oc apply -f -
+	apiVersion: operators.coreos.com/v1alpha1
+	kind: Subscription
+	metadata:
+	  name: ${COMPONENT}-subscription
+	  generateName: ${COMPONENT}-
+	  namespace: ${COMPONENT}
+	spec:
+	  source: ${COMPONENT}-operator
+	  sourceNamespace: $OLM_NAMESPACE
+	  name: ${COMPONENT}-operator
+	  channel: alpha
+	EOF
+  cat <<-EOF | oc apply -f -
+  apiVersion: serving.knative.dev/v1alpha1
+  kind: Install
+  metadata:
+    name: ${COMPONENT}
+    namespace: ${COMPONENT}
+	EOF
 }
 
 function install_knative_eventing(){
@@ -293,7 +310,7 @@ function run_e2e_tests(){
 
 function delete_istio_openshift(){
   echo ">> Bringing down Istio"
-  oc delete ControlPlane/basic-install -n istio-system
+  oc delete ControlPlane/minimal-istio -n istio-system
 }
 
 function delete_serving_openshift() {
