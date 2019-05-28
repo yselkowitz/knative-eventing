@@ -37,24 +37,46 @@ data:
               metadata:
                 type: object
               spec:
-                properties:
-                  namespace:
-                    description: The target namespace in which to install the upstream resources
-                    type: string
                 type: object
               status:
                 properties:
-                  resources:
-                    description: The resources applied by the operator
+                  conditions:
+                    description: The latest available observations of a resource's current
+                      state. +patchMergeKey=type +patchStrategy=merge
                     items:
+                      properties:
+                        lastTransitionTime:
+                          description: LastTransitionTime is the last time the condition
+                            transitioned from one status to another. We use VolatileTime
+                            in place of metav1.Time to exclude this from creating equality.Semantic
+                            differences (all other things held constant).
+                          type: string
+                        message:
+                          description: A human readable message indicating details about
+                            the transition.
+                          type: string
+                        reason:
+                          description: The reason for the condition's last transition.
+                          type: string
+                        severity:
+                          description: Severity with which to treat failures of this type
+                            of condition. When this is not specified, it defaults to Error.
+                          type: string
+                        status:
+                          description: Status of the condition, one of True, False, Unknown.
+                            +required
+                          type: string
+                        type:
+                          description: Type of condition. +required
+                          type: string
+                      required:
+                      - type
+                      - status
                       type: object
                     type: array
                   version:
                     description: The version of the installed release
                     type: string
-                required:
-                - resources
-                - version
                 type: object
         version: v1alpha1
         versions:
@@ -266,7 +288,7 @@ data:
       kind: ClusterServiceVersion
       metadata:
         annotations:
-          alm-examples: '[{"apiVersion":"eventing.knative.dev/v1alpha1","kind":"Install","metadata":{"name":"knative-eventing"},"spec":{"namespace":"default"}}]'
+          alm-examples: '[{"apiVersion":"eventing.knative.dev/v1alpha1","kind":"Install","metadata":{"name":"knative-eventing"},"spec":{}}]'
           capabilities: Basic Install
           categories: Networking,Integration & Delivery,Cloud Provider,Developer Tools
           certified: "false"
@@ -284,6 +306,12 @@ data:
       spec:
         apiservicedefinitions: {}
         customresourcedefinitions:
+          required:
+          - description: Represents an installation of a particular version of Knative Serving
+            displayName: Knative Serving
+            kind: Install
+            name: installs.serving.knative.dev
+            version: v1alpha1
           owned:
           - description: Represents an installation of a particular version of Knative Eventing
             displayName: Knative Eventing
@@ -308,21 +336,10 @@ data:
             - kind: ConfigMap
               name: ""
               version: v1
-            specDescriptors:
-            - description: The target namespace into which Knative Eventing will be installed
-              displayName: Namespace
-              path: namespace
-              x-descriptors:
-              - urn:alm:descriptor:com.tectonic.ui:namespaceSelector
             statusDescriptors:
-            - description: The actual Knative Eventing resources installed by the operator
-              displayName: Resources
-              path: resources
             - description: The version of Knative Eventing installed
               displayName: Version
               path: version
-              x-descriptors:
-              - urn:alm:descriptor:com.tectonic.ui:label
             version: v1alpha1
         description: |
           Knative Eventing is designed to address a common need for cloud
@@ -375,14 +392,14 @@ data:
                       - name: WATCH_NAMESPACE
                         valueFrom:
                           fieldRef:
-                            fieldPath: metadata.namespace
+                            fieldPath: metadata.annotations['olm.targetNamespaces']
                       - name: POD_NAME
                         valueFrom:
                           fieldRef:
                             fieldPath: metadata.name
                       - name: OPERATOR_NAME
                         value: knative-eventing-operator
-                      image: quay.io/openshift-knative/knative-eventing-operator:v0.5.0
+                      image: quay.io/openshift-knative/knative-eventing-operator:v0.6.0
                       imagePullPolicy: Always
                       name: knative-eventing-operator
                       resources: {}
