@@ -56,13 +56,11 @@ function install_knative_serving(){
   wait_until_pods_running $OLM_NAMESPACE
 
   # Deploy Knative Operators Serving
-  deploy_knative_operator serving
+  deploy_knative_operator serving KnativeServing
 
   # Wait for 6 pods to appear first
   timeout_non_zero 900 '[[ $(oc get pods -n $SERVING_NAMESPACE --no-headers | wc -l) -lt 6 ]]' || return 1
   wait_until_pods_running knative-serving || return 1
-
-  enable_knative_interaction_with_registry
 
   # Wait for 2 pods to appear first
   timeout_non_zero 900 '[[ $(oc get pods -n istio-system --no-headers | wc -l) -lt 2 ]]' || return 1
@@ -75,6 +73,7 @@ function install_knative_serving(){
 
 function deploy_knative_operator(){
   local COMPONENT="knative-$1"
+  local KIND=$2
 
   cat <<-EOF | oc apply -f -
 	apiVersion: v1
@@ -107,11 +106,11 @@ function deploy_knative_operator(){
 
   # Wait until the server knows about the Install CRD before creating
   # an instance of it below
-  timeout_non_zero 60 '[[ $(oc get crd installs.serving.knative.dev -o jsonpath="{.status.acceptedNames.kind}" | grep -c Install) -eq 0 ]]' || return 1
+  timeout_non_zero 60 '[[ $(oc get crd knativeservings.serving.knative.dev -o jsonpath="{.status.acceptedNames.kind}" | grep -c $KIND) -eq 0 ]]' || return 1
   
   cat <<-EOF | oc apply -f -
   apiVersion: serving.knative.dev/v1alpha1
-  kind: Install
+  kind: $KIND
   metadata:
     name: ${COMPONENT}
     namespace: ${COMPONENT}
@@ -179,6 +178,9 @@ function create_test_resources() {
     oc adm policy add-scc-to-user anyuid -z eventing-broker-filter -n $i
     oc adm policy add-scc-to-user privileged -z eventing-broker-filter -n $i
     oc adm policy add-cluster-role-to-user cluster-admin -z eventing-broker-filter -n $i
+    oc adm policy add-scc-to-user anyuid -z eventing-broker-ingress -n $i
+    oc adm policy add-scc-to-user privileged -z eventing-broker-ingress -n $i
+    oc adm policy add-cluster-role-to-user cluster-admin -z eventing-broker-ingress -n $i
   done
 
 }
@@ -215,18 +217,6 @@ function create_test_namespace(){
     oc adm policy add-scc-to-user anyuid -z default -n $i
     oc adm policy add-scc-to-user privileged -z default -n $i
   done
-}
-
-function enable_knative_interaction_with_registry() {
-  local configmap_name=config-service-ca
-  local cert_name=service-ca.crt
-  local mount_path=/var/run/secrets/kubernetes.io/servicecerts
-
-  oc -n $SERVING_NAMESPACE create configmap $configmap_name
-  oc -n $SERVING_NAMESPACE annotate configmap $configmap_name service.alpha.openshift.io/inject-cabundle="true"
-  wait_until_configmap_contains $SERVING_NAMESPACE $configmap_name $cert_name
-  oc -n $SERVING_NAMESPACE set volume deployment/controller --add --name=service-ca --configmap-name=$configmap_name --mount-path=$mount_path
-  oc -n $SERVING_NAMESPACE set env deployment/controller SSL_CERT_FILE=$mount_path/$cert_name
 }
 
 function run_e2e_tests(){
