@@ -106,7 +106,7 @@ function deploy_knative_operator(){
 
   # Wait until the server knows about the Install CRD before creating
   # an instance of it below
-  timeout_non_zero 60 '[[ $(oc get crd knativeservings.serving.knative.dev -o jsonpath="{.status.acceptedNames.kind}" | grep -c $KIND) -eq 0 ]]' || return 1
+  timeout_non_zero 60 '[[ $(oc get crd knativeeventings.serving.knative.dev -o jsonpath="{.status.acceptedNames.kind}" | grep -c $KIND) -eq 0 ]]' || return 1
   
   cat <<-EOF | oc apply -f -
   apiVersion: serving.knative.dev/v1alpha1
@@ -120,35 +120,26 @@ function deploy_knative_operator(){
 function install_knative_eventing(){
   header "Installing Knative Eventing"
 
-  # Create knative-eventing namespace, needed for imagestreams
-  oc create namespace $EVENTING_NAMESPACE
+  echo ">> Patching Knative Eventing CatalogSource to reference CI produced images"
+  CURRENT_GIT_BRANCH=$(git rev-parse --abbrev-ref HEAD)
+  RELEASE_YAML="https://raw.githubusercontent.com/openshift/knative-eventing/${CURRENT_GIT_BRANCH}/openshift/release/knative-eventing-ci.yaml"
+  sed "s|--filename=.*|--filename=${RELEASE_YAML}|"  openshift/olm/knative-eventing.catalogsource.yaml > knative-eventing.catalogsource-ci.yaml
 
-  # Grant the necessary privileges to the service accounts Knative will use:
-  oc annotate clusterrolebinding.rbac cluster-admin 'rbac.authorization.kubernetes.io/autoupdate=false' --overwrite
-  oc annotate clusterrolebinding.rbac cluster-admins 'rbac.authorization.kubernetes.io/autoupdate=false' --overwrite
+  # Install CatalogSources in OLM namespace
+  oc apply -n $OLM_NAMESPACE -f knative-eventing.catalogsource-ci.yaml
+  timeout_non_zero 900 '[[ $(oc get pods -n $OLM_NAMESPACE | grep -c knative-eventing) -eq 0 ]]' || return 1
+  wait_until_pods_running $OLM_NAMESPACE
 
-  oc adm policy add-scc-to-user anyuid -z eventing-controller -n $EVENTING_NAMESPACE
-  oc adm policy add-scc-to-user anyuid -z eventing-webhook -n $EVENTING_NAMESPACE
-  #oc adm policy add-scc-to-user privileged -z eventing-webhook -n $EVENTING_NAMESPACE
-  oc adm policy add-scc-to-user anyuid -z in-memory-channel-dispatcher -n $EVENTING_NAMESPACE
-  oc adm policy add-scc-to-user anyuid -z in-memory-channel-controller -n $EVENTING_NAMESPACE
+  # Deploy Knative Operators Eventing
+  deploy_knative_operator eventing KnativeEventing
 
-  resolve_resources config/ eventing-resolved.yaml $TARGET_IMAGE_PREFIX
+  # Create imagestream for images generated in CI namespace
+  tag_core_images openshift/release/knative-eventing-ci.yaml
 
-  tag_core_images eventing-resolved.yaml
-
-  oc apply -f eventing-resolved.yaml
-
-  oc adm policy add-cluster-role-to-user cluster-admin -z eventing-controller -n $EVENTING_NAMESPACE
-  #oc adm policy add-cluster-role-to-user cluster-admin -z eventing-webhook -n $EVENTING_NAMESPACE
-  oc adm policy add-cluster-role-to-user cluster-admin -z in-memory-channel-dispatcher -n $EVENTING_NAMESPACE
-  oc adm policy add-cluster-role-to-user cluster-admin -z in-memory-channel-controller -n $EVENTING_NAMESPACE
-  oc adm policy add-cluster-role-to-user cluster-admin -z default -n knative-sources
-
-  echo ">>> Setting SSL_CERT_FILE for Knative Eventing Controller"
-  oc set env -n $EVENTING_NAMESPACE deployment/eventing-controller SSL_CERT_FILE=/var/run/secrets/kubernetes.io/serviceaccount/service-ca.crt
-
+  # Wait for 6 pods to appear first
+  timeout_non_zero 900 '[[ $(oc get pods -n $EVENTING_NAMESPACE --no-headers | wc -l) -lt 6 ]]' || return 1
   wait_until_pods_running $EVENTING_NAMESPACE || return 1
+
 }
 
 function install_in_memory_channel_provisioner(){
