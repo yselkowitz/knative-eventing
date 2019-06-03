@@ -7,11 +7,7 @@ set -x
 
 readonly BUILD_VERSION=v0.4.0
 readonly BUILD_RELEASE=https://github.com/knative/build/releases/download/${BUILD_VERSION}/build.yaml
-readonly MAISTRA_VERSION="0.10"
-readonly SERVING_VERSION=v0.5.2
-readonly SERVING_RELEASE=https://github.com/knative/serving/releases/download/${SERVING_VERSION}/serving.yaml
-# We use nightly, to match the fact we do build here the latest from EVENTING
-readonly EVENTING_SOURCES_RELEASE=https://storage.googleapis.com/knative-nightly/eventing-sources/latest/eventing-sources.yaml
+readonly SERVING_VERSION=v0.6.0
 
 readonly K8S_CLUSTER_OVERRIDE=$(oc config current-context | awk -F'/' '{print $2}')
 readonly API_SERVER=$(oc config view --minify | grep server | awk -F'//' '{print $2}' | awk -F':' '{print $1}')
@@ -37,69 +33,6 @@ function timeout_non_zero() {
   return 0
 }
 
-function install_istio(){
-  header "Installing Istio"
-
-  # Install the Maistra Operator
-  oc new-project istio-operator
-  oc new-project istio-system
-  oc apply -n istio-operator -f https://raw.githubusercontent.com/Maistra/istio-operator/maistra-${MAISTRA_VERSION}/deploy/maistra-operator.yaml
-
-  # Wait until the Operator pod is up and running
-  wait_until_pods_running istio-operator || return 1
-
-  # Deploy Istio
-  cat <<EOF | oc apply -f -
-apiVersion: istio.openshift.com/v1alpha3
-kind: ControlPlane
-metadata:
-  name: minimal-istio
-spec:
-  istio:
-    global:
-      # use community images
-      hub: "maistra"
-      tag: ${MAISTRA_VERSION}.0
-      proxy:
-        autoInject: disabled
-      useMCP: false
-      disablePolicyChecks: false
-      omitSidecarInjectorConfigMap: true
-    galley:
-      enabled: false
-    gateways:
-      istio-ingressgateway:
-        autoscaleEnabled: false
-      istio-egressgateway:
-        enabled: false
-    grafana:
-      enabled: false
-    mixer:
-      enabled: false
-      policy:
-        enabled: false
-      telemetry:
-        enabled: false
-    pilot:
-      autoscaleEnabled: false
-      sidecar: false
-    prometheus:
-      enabled: false
-    security:
-      enabled: false
-    sidecarInjectorWebhook:
-      enabled: false
-    kiali:
-      enabled: false
-    tracing:
-      enabled: false
-EOF
-
-  # Wait until at least the Istio ControlPlane is installed
-  timeout_non_zero 900 '[[ $(oc get ControlPlane/minimal-istio --template="{{range .status.conditions}}{{printf \"%s=%s, reason=%s, message=%s\n\n\" .type .status .reason .message}}{{end}}" | grep -c Installed=True) -eq 0 ]]' || return 1
-  
-  header "Istio Installed successfully"
-}
 
 function install_knative_build(){
   header "Installing Knative Build"
@@ -123,13 +56,11 @@ function install_knative_serving(){
   wait_until_pods_running $OLM_NAMESPACE
 
   # Deploy Knative Operators Serving
-  deploy_knative_operator serving
+  deploy_knative_operator serving KnativeServing
 
   # Wait for 6 pods to appear first
   timeout_non_zero 900 '[[ $(oc get pods -n $SERVING_NAMESPACE --no-headers | wc -l) -lt 6 ]]' || return 1
   wait_until_pods_running knative-serving || return 1
-
-  enable_knative_interaction_with_registry
 
   # Wait for 2 pods to appear first
   timeout_non_zero 900 '[[ $(oc get pods -n istio-system --no-headers | wc -l) -lt 2 ]]' || return 1
@@ -142,6 +73,7 @@ function install_knative_serving(){
 
 function deploy_knative_operator(){
   local COMPONENT="knative-$1"
+  local KIND=$2
 
   cat <<-EOF | oc apply -f -
 	apiVersion: v1
@@ -174,11 +106,11 @@ function deploy_knative_operator(){
 
   # Wait until the server knows about the Install CRD before creating
   # an instance of it below
-  timeout_non_zero 60 '[[ $(oc get crd installs.serving.knative.dev -o jsonpath="{.status.acceptedNames.kind}" | grep -c Install) -eq 0 ]]' || return 1
+  timeout_non_zero 60 '[[ $(oc get crd knativeservings.serving.knative.dev -o jsonpath="{.status.acceptedNames.kind}" | grep -c $KIND) -eq 0 ]]' || return 1
   
   cat <<-EOF | oc apply -f -
   apiVersion: serving.knative.dev/v1alpha1
-  kind: Install
+  kind: $KIND
   metadata:
     name: ${COMPONENT}
     namespace: ${COMPONENT}
@@ -226,12 +158,6 @@ function install_in_memory_channel_provisioner(){
   tag_core_images channel-resolved.yaml
 
   oc apply -f channel-resolved.yaml
-}
-
-function install_knative_eventing_sources(){
-  header "Installing Knative Eventing Sources"
-  oc apply -f ${EVENTING_SOURCES_RELEASE}
-  wait_until_pods_running knative-sources || return 1
 }
 
 function create_test_resources() {
@@ -290,18 +216,6 @@ function create_test_namespace(){
   done
 }
 
-function enable_knative_interaction_with_registry() {
-  local configmap_name=config-service-ca
-  local cert_name=service-ca.crt
-  local mount_path=/var/run/secrets/kubernetes.io/servicecerts
-
-  oc -n $SERVING_NAMESPACE create configmap $configmap_name
-  oc -n $SERVING_NAMESPACE annotate configmap $configmap_name service.alpha.openshift.io/inject-cabundle="true"
-  wait_until_configmap_contains $SERVING_NAMESPACE $configmap_name $cert_name
-  oc -n $SERVING_NAMESPACE set volume deployment/controller --add --name=service-ca --configmap-name=$configmap_name --mount-path=$mount_path
-  oc -n $SERVING_NAMESPACE set env deployment/controller SSL_CERT_FILE=$mount_path/$cert_name
-}
-
 function run_e2e_tests(){
   header "Running tests"
   options=""
@@ -329,11 +243,6 @@ function delete_build_openshift() {
   oc delete --ignore-not-found=true -f $BUILD_RELEASE
 }
 
-function delete_knative_eventing_sources(){
-  header "Brinding down Knative Eventing Sources"
-  oc delete --ignore-not-found=true -f $EVENTING_SOURCES_RELEASE
-}
-
 function delete_knative_eventing(){
   header "Bringing down Eventing"
   oc delete --ignore-not-found=true -f eventing-resolved.yaml
@@ -347,7 +256,6 @@ function delete_in_memory_channel_provisioner(){
 function teardown() {
   rm TEST_NAMES
   delete_in_memory_channel_provisioner
-  delete_knative_eventing_sources
   delete_knative_eventing
   delete_serving_openshift
   delete_build_openshift
@@ -433,8 +341,6 @@ create_test_namespace || exit 1
 
 failed=0
 
-(( !failed )) && install_istio || failed=1
-
 (( !failed )) && install_knative_build || failed=1
 
 (( !failed )) && install_knative_serving || failed=1
@@ -442,8 +348,6 @@ failed=0
 (( !failed )) && install_knative_eventing || failed=1
 
 (( !failed )) && install_in_memory_channel_provisioner || failed=1
-
-(( !failed )) && install_knative_eventing_sources || failed=1
 
 (( !failed )) && create_test_resources
 
