@@ -73,6 +73,7 @@ function install_knative_serving(){
 
 function deploy_knative_operator(){
   local COMPONENT="knative-$1"
+  local API_GROUP=$1
   local KIND=$2
 
   cat <<-EOF | oc apply -f -
@@ -106,10 +107,10 @@ function deploy_knative_operator(){
 
   # Wait until the server knows about the Install CRD before creating
   # an instance of it below
-  timeout_non_zero 60 '[[ $(oc get crd knativeeventings.serving.knative.dev -o jsonpath="{.status.acceptedNames.kind}" | grep -c $KIND) -eq 0 ]]' || return 1
+  timeout_non_zero 60 '[[ $(oc get crd knative${API_GROUP}s.${API_GROUP}.knative.dev -o jsonpath="{.status.acceptedNames.kind}" | grep -c $KIND) -eq 0 ]]' || return 1
   
   cat <<-EOF | oc apply -f -
-  apiVersion: serving.knative.dev/v1alpha1
+  apiVersion: ${API_GROUP}.knative.dev/v1alpha1
   kind: $KIND
   metadata:
     name: ${COMPONENT}
