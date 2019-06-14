@@ -13,6 +13,9 @@ install:
 	go build -o $(GOPATH)/bin/in-memory-channel-dispatcher ./cmd/in_memory/dispatcher
 	go build -o $(GOPATH)/bin/kafka-channel-controller ./contrib/kafka/cmd/controller
 	go build -o $(GOPATH)/bin/kafka-channel-dispatcher ./contrib/kafka/cmd/dispatcher
+	go build -o $(GOPATH)/bin/kafka-channel-crd-controller ./contrib/kafka/cmd/channel_controller
+	go build -o $(GOPATH)/bin/kafka-channel-crd-dispatcher ./contrib/kafka/cmd/channel_dispatcher
+	go build -o $(GOPATH)/bin/kafka-channel-crd-webhook ./contrib/kafka/cmd/webhook
 .PHONY: install
 
 test-install:
@@ -31,6 +34,11 @@ test-origin-conformance:
 
 # Generate Dockerfiles used by ci-operator. The files need to be committed manually.
 generate-dockerfiles:
+	# remove old shizzle to catch when images got removed!
+	rm -rf openshift/ci-operator/knative-images/*
+	rm -rf openshift/ci-operator/knative-test-images/*
+
+	# regenerate the images...
 	./openshift/ci-operator/generate-dockerfiles.sh openshift/ci-operator/knative-images $(CORE_IMAGES)
 	./openshift/ci-operator/generate-dockerfiles.sh openshift/ci-operator/knative-images imc-controller
 	./openshift/ci-operator/generate-dockerfiles.sh openshift/ci-operator/knative-images imc-dispatcher
@@ -38,6 +46,9 @@ generate-dockerfiles:
 	./openshift/ci-operator/generate-dockerfiles.sh openshift/ci-operator/knative-images in-memory-channel-dispatcher
 	./openshift/ci-operator/generate-dockerfiles.sh openshift/ci-operator/knative-images kafka-channel-controller
 	./openshift/ci-operator/generate-dockerfiles.sh openshift/ci-operator/knative-images kafka-channel-dispatcher
+	./openshift/ci-operator/generate-dockerfiles.sh openshift/ci-operator/knative-images kafka-channel-crd-controller
+	./openshift/ci-operator/generate-dockerfiles.sh openshift/ci-operator/knative-images kafka-channel-crd-dispatcher
+	./openshift/ci-operator/generate-dockerfiles.sh openshift/ci-operator/knative-images kafka-channel-crd-webhook
 	./openshift/ci-operator/generate-dockerfiles.sh openshift/ci-operator/knative-test-images $(TEST_IMAGES)
 .PHONY: generate-dockerfiles
 
