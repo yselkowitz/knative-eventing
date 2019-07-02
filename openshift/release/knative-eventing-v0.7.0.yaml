@@ -224,6 +224,12 @@ rules:
       - "sequences/status"
     verbs: *everything
   - apiGroups:
+      - "messaging.knative.dev"
+    resources:
+      - "sequences/finalizers"
+    verbs:
+      - "update"
+  - apiGroups:
       - "sources.eventing.knative.dev"
     resources:
       - "cronjobsources"
