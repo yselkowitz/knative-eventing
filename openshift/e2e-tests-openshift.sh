@@ -5,8 +5,6 @@ source $(dirname $0)/release/resolve.sh
 
 set -x
 
-readonly BUILD_VERSION=v0.4.0
-readonly BUILD_RELEASE=https://github.com/knative/build/releases/download/${BUILD_VERSION}/build.yaml
 readonly SERVING_VERSION=v0.6.0
 
 readonly K8S_CLUSTER_OVERRIDE=$(oc config current-context | awk -F'/' '{print $2}')
@@ -33,18 +31,19 @@ function timeout_non_zero() {
   return 0
 }
 
+function install_strimzi(){
+  strimzi_version=`curl https://github.com/strimzi/strimzi-kafka-operator/releases/latest |  awk -F 'tag/' '{print $2}' | awk -F '"' '{print $1}' 2>/dev/null`
+  header_text "Strimzi install"
+  kubectl create namespace kafka
+  curl -L "https://github.com/strimzi/strimzi-kafka-operator/releases/download/${strimzi_version}/strimzi-cluster-operator-${strimzi_version}.yaml" \
+  | sed 's/namespace: .*/namespace: kafka/' \
+  | kubectl -n kafka apply -f -
 
-function install_knative_build(){
-  header "Installing Knative Build"
+  header_text "Applying Strimzi Cluster file"
+  kubectl -n kafka apply -f "https://raw.githubusercontent.com/strimzi/strimzi-kafka-operator/${strimzi_version}/examples/kafka/kafka-persistent-single.yaml"
 
-  oc adm policy add-scc-to-user anyuid -z build-controller -n knative-build
-  oc adm policy add-cluster-role-to-user cluster-admin -z build-controller -n knative-build
-  oc adm policy add-cluster-role-to-user cluster-admin -z build-pipeline-controller -n knative-build-pipeline
-
-  oc apply -f $BUILD_RELEASE
-
-  wait_until_pods_running knative-build || return 1
-  header "Knative Build installed successfully"
+  header_text "Waiting for Strimzi to become ready"
+  sleep 5; while echo && kubectl get pods -n kafka | grep -v -E "(Running|Completed|STATUS)"; do sleep 5; done
 }
 
 function install_knative_serving(){
@@ -214,6 +213,18 @@ function run_e2e_tests(){
     ${options} || return 1
 }
 
+function delete_strimzi(){
+
+  strimzi_version=`curl https://github.com/strimzi/strimzi-kafka-operator/releases/latest |  awk -F 'tag/' '{print $2}' | awk -F '"' '{print $1}' 2>/dev/null`
+
+  header_text "Delete Strimzi Cluster"
+  kubectl -n kafka delete -f "https://raw.githubusercontent.com/strimzi/strimzi-kafka-operator/${strimzi_version}/examples/kafka/kafka-persistent-single.yaml"
+
+  header_text "remove Strimzi"
+  kubectl -n kafka delete -f "https://github.com/strimzi/strimzi-kafka-operator/releases/download/${strimzi_version}/strimzi-cluster-operator-${strimzi_version}.yaml"
+  kubectl delete namespace kafka
+}
+
 function delete_istio_openshift(){
   echo ">> Bringing down Istio"
   oc delete ControlPlane/minimal-istio -n istio-system
@@ -222,11 +233,6 @@ function delete_istio_openshift(){
 function delete_serving_openshift() {
   echo ">> Bringing down Serving"
   oc delete --ignore-not-found=true -f $SERVING_RELEASE
-}
-
-function delete_build_openshift() {
-  echo ">> Bringing down Build"
-  oc delete --ignore-not-found=true -f $BUILD_RELEASE
 }
 
 function delete_knative_eventing(){
@@ -244,8 +250,8 @@ function teardown() {
   delete_in_memory_channel_provisioner
   delete_knative_eventing
   delete_serving_openshift
-  delete_build_openshift
   delete_istio_openshift
+  delete_strimzi
 }
 
 function tag_test_images() {
@@ -327,7 +333,7 @@ create_test_namespace || exit 1
 
 failed=0
 
-(( !failed )) && install_knative_build || failed=1
+(( !failed )) && install_strimzi || failed=1
 
 (( !failed )) && install_knative_serving || failed=1
 
