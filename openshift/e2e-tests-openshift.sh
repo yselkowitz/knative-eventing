@@ -17,10 +17,7 @@ readonly TEST_ORIGIN_CONFORMANCE="${TEST_ORIGIN_CONFORMANCE:-"false"}"
 readonly SERVING_NAMESPACE=knative-serving
 readonly EVENTING_NAMESPACE=knative-eventing
 readonly TARGET_IMAGE_PREFIX="$INTERNAL_REGISTRY/$EVENTING_NAMESPACE/knative-eventing-"
-# TODO: Subscription.spec.sourceNamespace does not work on OCP v4.2. Need to revert after https://jira.coreos.com/browse/OLM-1190 is solved.
-readonly OLM_NAMESPACE_SERVING="knative-serving"
-readonly OLM_NAMESPACE_EVENTING="knative-eventing"
-#readonly OLM_NAMESPACE="openshift-operator-lifecycle-manager"
+readonly OLM_NAMESPACE="openshift-operator-lifecycle-manager"
 
 env
 
@@ -52,12 +49,12 @@ function install_strimzi(){
 function install_knative_serving(){
   header "Installing Knative Serving"
 
-  create_knative_namespace serving
+  # create_knative_namespace serving
 
   # Install CatalogSources in OLM namespace
-  oc apply -n $OLM_NAMESPACE_SERVING -f https://raw.githubusercontent.com/openshift/knative-serving/release-${SERVING_VERSION}/openshift/olm/knative-serving.catalogsource.yaml
-  timeout_non_zero 900 '[[ $(oc get pods -n $OLM_NAMESPACE_SERVING | grep -c knative) -eq 0 ]]' || return 1
-  wait_until_pods_running $OLM_NAMESPACE_SERVING
+  oc apply -n $OLM_NAMESPACE -f https://raw.githubusercontent.com/openshift/knative-serving/release-${SERVING_VERSION}/openshift/olm/knative-serving.catalogsource.yaml
+  timeout_non_zero 900 '[[ $(oc get pods -n $OLM_NAMESPACE | grep -c knative) -eq 0 ]]' || return 1
+  wait_until_pods_running $OLM_NAMESPACE
 
   # Deploy Knative Operators Serving
   deploy_knative_operator serving KnativeServing
@@ -73,17 +70,6 @@ function install_knative_serving(){
   wait_until_hostname_resolves $(kubectl get svc -n istio-system istio-ingressgateway -o jsonpath="{.status.loadBalancer.ingress[0].hostname}")
 
   header "Knative Serving Installed successfully"
-}
-
-function create_knative_namespace(){
-  local COMPONENT="knative-$1"
-
-  cat <<-EOF | oc apply -f -
-	apiVersion: v1
-	kind: Namespace
-	metadata:
-	  name: ${COMPONENT}
-	EOF
 }
 
 function deploy_knative_operator(){
@@ -115,7 +101,7 @@ function deploy_knative_operator(){
 	  namespace: ${COMPONENT}
 	spec:
 	  source: ${COMPONENT}-operator
-	  sourceNamespace: $COMPONENT
+	  sourceNamespace: $OLM_NAMESPACE
 	  name: ${COMPONENT}-operator
 	  channel: alpha
 	EOF
@@ -136,8 +122,7 @@ function deploy_knative_operator(){
 function install_knative_eventing(){
   header "Installing Knative Eventing"
 
-  create_knative_namespace eventing
-
+  # create_knative_namespace eventing
 
   echo ">> Patching Knative Eventing CatalogSource to reference CI produced images"
   CURRENT_GIT_BRANCH=$(git rev-parse --abbrev-ref HEAD)
@@ -145,9 +130,9 @@ function install_knative_eventing(){
   sed "s|--filename=.*|--filename=${RELEASE_YAML}|"  openshift/olm/knative-eventing.catalogsource.yaml > knative-eventing.catalogsource-ci.yaml
 
   # Install CatalogSources in OLM namespace
-  oc apply -n $OLM_NAMESPACE_EVENTING -f knative-eventing.catalogsource-ci.yaml
-  timeout_non_zero 900 '[[ $(oc get pods -n $OLM_NAMESPACE_EVENTING | grep -c knative-eventing) -eq 0 ]]' || return 1
-  wait_until_pods_running $OLM_NAMESPACE_EVENTING
+  oc apply -n $OLM_NAMESPACE -f knative-eventing.catalogsource-ci.yaml
+  timeout_non_zero 900 '[[ $(oc get pods -n $OLM_NAMESPACE | grep -c knative-eventing) -eq 0 ]]' || return 1
+  wait_until_pods_running $OLM_NAMESPACE
 
   # Deploy Knative Operators Eventing
   deploy_knative_operator eventing KnativeEventing
@@ -198,10 +183,8 @@ function tag_core_images(){
 
   echo ">> Creating imagestream tags for images referenced in yaml files"
   IMAGE_NAMES=$(cat $resolved_file_name | grep -i "image:\|value:" | grep "$INTERNAL_REGISTRY" | awk '{print $2}' | awk -F '/' '{print $3}')
-  for nametag in $IMAGE_NAMES; do
-    name=$(echo $nametag | cut -d: -f1)
-    tag=$(echo $nametag | cut -d: -f2)
-    tag_built_image ${name} ${name} ${tag}
+  for name in $IMAGE_NAMES; do
+    tag_built_image ${name} ${name}
   done
 }
 
@@ -284,7 +267,7 @@ function tag_test_images() {
 
   for image_dir in ${image_dirs}; do
     name=$(basename ${image_dir})
-    tag_built_image knative-eventing-test-${name} ${name} latest
+    tag_built_image knative-eventing-test-${name} ${name}
 
   done
 }
@@ -293,7 +276,7 @@ function tag_built_image() {
   local remote_name=$1
   local local_name=$2
   local build_tag=$3
-  oc tag --insecure=${INSECURE} -n ${EVENTING_NAMESPACE} ${OPENSHIFT_REGISTRY}/${OPENSHIFT_BUILD_NAMESPACE}/stable:${remote_name} ${local_name}:${build_tag}
+  oc tag --insecure=${INSECURE} -n ${EVENTING_NAMESPACE} ${OPENSHIFT_REGISTRY}/${OPENSHIFT_BUILD_NAMESPACE}/stable:${remote_name} ${local_name}:latest
 }
 
 function run_origin_e2e() {
