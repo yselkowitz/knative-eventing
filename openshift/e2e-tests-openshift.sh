@@ -5,7 +5,7 @@ source $(dirname $0)/release/resolve.sh
 
 set -x
 
-readonly SERVING_VERSION=v0.6.0
+readonly SERVING_VERSION=v0.7.1
 
 readonly K8S_CLUSTER_OVERRIDE=$(oc config current-context | awk -F'/' '{print $2}')
 readonly API_SERVER=$(oc config view --minify | grep server | awk -F'//' '{print $2}' | awk -F':' '{print $1}')
@@ -17,6 +17,7 @@ readonly TEST_ORIGIN_CONFORMANCE="${TEST_ORIGIN_CONFORMANCE:-"false"}"
 readonly SERVING_NAMESPACE=knative-serving
 readonly EVENTING_NAMESPACE=knative-eventing
 readonly TARGET_IMAGE_PREFIX="$INTERNAL_REGISTRY/$EVENTING_NAMESPACE/knative-eventing-"
+readonly MAISTRA_VERSION="0.12"
 readonly OLM_NAMESPACE="openshift-operator-lifecycle-manager"
 
 env
@@ -46,10 +47,104 @@ function install_strimzi(){
   sleep 5; while echo && kubectl get pods -n kafka | grep -v -E "(Running|Completed|STATUS)"; do sleep 5; done
 }
 
+function install_istio(){
+  header "Installing Istio"
+
+  # Install the Maistra Operator
+  oc new-project istio-operator
+  oc new-project istio-system
+  oc apply -n istio-operator -f https://raw.githubusercontent.com/Maistra/istio-operator/maistra-${MAISTRA_VERSION}/deploy/maistra-operator.yaml
+
+  # Wait until the Operator pod is up and running
+  wait_until_pods_running istio-operator || return 1
+
+  # Workaround for MAISTRA-670
+  oc delete validatingwebhookconfiguration istio-operator.servicemesh-resources.maistra.io
+
+  # Deploy Istio
+  cat <<EOF | oc apply -f -
+apiVersion: maistra.io/v1
+kind: ServiceMeshControlPlane
+metadata:
+  name: minimal-multitenant-cni-install
+  namespace: istio-system
+spec:
+  istio:
+    global:
+      multitenant: true
+      proxy:
+        autoInject: disabled
+      omitSidecarInjectorConfigMap: true
+      disablePolicyChecks: false
+    istio_cni:
+      enabled: true
+    gateways:
+      istio-ingressgateway:
+        autoscaleEnabled: false
+        type: LoadBalancer
+      istio-egressgateway:
+        enabled: false
+      cluster-local-gateway:
+        autoscaleEnabled: false
+        enabled: true
+        labels:
+          app: cluster-local-gateway
+          istio: cluster-local-gateway
+        ports:
+          - name: status-port
+            port: 15020
+          - name: http2
+            port: 80
+            targetPort: 80
+          - name: https
+            port: 443
+    mixer:
+      enabled: false
+      policy:
+        enabled: false
+      telemetry:
+        enabled: false
+    pilot:
+      # disable autoscaling for use in smaller environments
+      autoscaleEnabled: false
+      sidecar: false
+    kiali:
+      enabled: false
+    tracing:
+      enabled: false
+    prometheus:
+      enabled: false
+    grafana:
+      enabled: false
+    sidecarInjectorWebhook:
+      enabled: false
+---
+apiVersion: maistra.io/v1
+kind: ServiceMeshMemberRoll
+metadata:
+  name: default
+spec:
+  members:
+  - serving-tests
+  - serving-tests-alt
+  - knative-serving
+EOF
+
+  # Wait for the ingressgateway pod to appear.
+  timeout_non_zero 900 '[[ $(oc get pods -n istio-system | grep -c istio-ingressgateway) -eq 0 ]]' || return 1
+
+  wait_until_service_has_external_ip istio-system istio-ingressgateway || fail_test "Ingress has no external IP"
+  wait_until_hostname_resolves $(kubectl get svc -n istio-system istio-ingressgateway -o jsonpath="{.status.loadBalancer.ingress[0].hostname}")
+
+  wait_until_pods_running istio-system
+
+  header "Istio Installed successfully"
+}
+
 function install_knative_serving(){
   header "Installing Knative Serving"
 
-  # create_knative_namespace serving
+  create_knative_namespace serving
 
   # Install CatalogSources in OLM namespace
   oc apply -n $OLM_NAMESPACE -f https://raw.githubusercontent.com/openshift/knative-serving/release-${SERVING_VERSION}/openshift/olm/knative-serving.catalogsource.yaml
@@ -57,7 +152,7 @@ function install_knative_serving(){
   wait_until_pods_running $OLM_NAMESPACE
 
   # Deploy Knative Operators Serving
-  deploy_knative_operator serving KnativeServing
+  deploy_knative_serving_operator serving KnativeServing
 
   # Wait for 6 pods to appear first
   timeout_non_zero 900 '[[ $(oc get pods -n $SERVING_NAMESPACE --no-headers | wc -l) -lt 6 ]]' || return 1
@@ -72,7 +167,53 @@ function install_knative_serving(){
   header "Knative Serving Installed successfully"
 }
 
-function deploy_knative_operator(){
+function create_knative_namespace(){
+  local COMPONENT="knative-$1"
+
+  cat <<-EOF | oc apply -f -
+	apiVersion: v1
+	kind: Namespace
+	metadata:
+	  name: ${COMPONENT}
+	EOF
+}
+
+function deploy_knative_serving_operator(){
+  local COMPONENT="knative-$1"
+  local KIND=$2
+
+  if oc get crd operatorgroups.operators.coreos.com >/dev/null 2>&1; then
+    cat <<-EOF | oc apply -f -
+	apiVersion: operators.coreos.com/v1
+	kind: OperatorGroup
+	metadata:
+	  name: ${COMPONENT}
+	  namespace: ${COMPONENT}
+	EOF
+  fi
+  cat <<-EOF | oc apply -f -
+	apiVersion: operators.coreos.com/v1alpha1
+	kind: Subscription
+	metadata:
+	  name: ${COMPONENT}-subscription
+	  generateName: ${COMPONENT}-
+	  namespace: ${COMPONENT}
+	spec:
+	  source: ${COMPONENT}-operator
+	  sourceNamespace: $OLM_NAMESPACE
+	  name: ${COMPONENT}-operator
+	  channel: alpha
+	EOF
+  cat <<-EOF | oc apply -f -
+  apiVersion: serving.knative.dev/v1alpha1
+  kind: $KIND
+  metadata:
+    name: ${COMPONENT}
+    namespace: ${COMPONENT}
+	EOF
+}
+
+function deploy_knative_eventing_operator(){
   local COMPONENT="knative-$1"
   local API_GROUP=$1
   local KIND=$2
@@ -136,7 +277,7 @@ function install_knative_eventing(){
   wait_until_pods_running $OLM_NAMESPACE
 
   # Deploy Knative Operators Eventing
-  deploy_knative_operator eventing KnativeEventing
+  deploy_knative_eventing_operator eventing KnativeEventing
 
   # Create imagestream for images generated in CI namespace
   tag_core_images openshift/release/knative-eventing-ci.yaml
@@ -342,6 +483,8 @@ create_test_namespace || exit 1
 failed=0
 
 (( !failed )) && install_strimzi || failed=1
+
+(( !failed )) && install_istio || failed=1
 
 (( !failed )) && install_knative_serving || failed=1
 
