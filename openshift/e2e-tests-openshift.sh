@@ -5,7 +5,7 @@ source $(dirname $0)/release/resolve.sh
 
 set -x
 
-readonly SERVING_VERSION=v0.7.1
+readonly SERVING_VERSION=v0.6.0
 
 readonly K8S_CLUSTER_OVERRIDE=$(oc config current-context | awk -F'/' '{print $2}')
 readonly API_SERVER=$(oc config view --minify | grep server | awk -F'//' '{print $2}' | awk -F':' '{print $1}')
@@ -52,7 +52,7 @@ function install_knative_serving(){
   # create_knative_namespace serving
 
   # Install CatalogSources in OLM namespace
-  oc apply -n $OLM_NAMESPACE -f https://raw.githubusercontent.com/openshift/knative-serving/openshift-${SERVING_VERSION}/openshift/olm/knative-serving.catalogsource.yaml
+  oc apply -n $OLM_NAMESPACE -f https://raw.githubusercontent.com/openshift/knative-serving/release-${SERVING_VERSION}/openshift/olm/knative-serving.catalogsource.yaml
   timeout_non_zero 900 '[[ $(oc get pods -n $OLM_NAMESPACE | grep -c knative) -eq 0 ]]' || return 1
   wait_until_pods_running $OLM_NAMESPACE
 
@@ -130,7 +130,8 @@ function install_knative_eventing(){
   sed "s|--filename=.*|--filename=${RELEASE_YAML}|"  openshift/olm/knative-eventing.catalogsource.yaml > knative-eventing.catalogsource-ci.yaml
 
   # Install CatalogSources in OLM namespace
-  oc apply -n $OLM_NAMESPACE -f knative-eventing.catalogsource-ci.yaml
+#  oc apply -n $OLM_NAMESPACE -f knative-eventing.catalogsource-ci.yaml
+  oc apply -n $OLM_NAMESPACE -f openshift/olm/knative-eventing.catalogsource.yaml
   timeout_non_zero 900 '[[ $(oc get pods -n $OLM_NAMESPACE | grep -c knative-eventing) -eq 0 ]]' || return 1
   wait_until_pods_running $OLM_NAMESPACE
 
