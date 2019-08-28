@@ -30,14 +30,21 @@ tests:
 resources:
   '*':
     limits:
-      memory: 4Gi
+      memory: 6Gi
     requests:
-      cpu: 100m
-      memory: 200Mi
+      cpu: 2
+      memory: 6Gi
+  'bin':
+    limits:
+      memory: 6Gi
+    requests:
+      cpu: 2
+      memory: 6Gi
+
 images:
 EOF
 
-core_images=$(find ./openshift/ci-operator/knative-images -mindepth 1 -maxdepth 1 -type d)
+core_images=$(find ./openshift/ci-operator/knative-images -mindepth 1 -maxdepth 1 -type d | LC_COLLATE=posix sort)
 for img in $core_images; do
   image_base=$(basename $img)
   to_image=$(echo ${image_base//_/-})
@@ -53,7 +60,7 @@ for img in $core_images; do
 EOF
 done
 
-test_images=$(find ./openshift/ci-operator/knative-test-images -mindepth 1 -maxdepth 1 -type d)
+test_images=$(find ./openshift/ci-operator/knative-test-images -mindepth 1 -maxdepth 1 -type d | LC_COLLATE=posix sort)
 for img in $test_images; do
   image_base=$(basename $img)
   to_image=$(echo ${image_base//_/-})
