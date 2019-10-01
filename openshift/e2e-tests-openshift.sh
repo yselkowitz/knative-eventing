@@ -97,10 +97,10 @@ function install_knative_serving(){
 
   oc new-project $SERVING_NAMESPACE
 
-  # Install CatalogSource in OLM namespace
-  oc apply -n $OLM_NAMESPACE -f https://raw.githubusercontent.com/openshift/knative-serving/release-v0.8.1/openshift/olm/knative-serving.catalogsource.yaml
-  timeout_non_zero 900 '[[ $(oc get pods -n $OLM_NAMESPACE | grep -c serverless) -eq 0 ]]' || return 1
-  wait_until_pods_running $OLM_NAMESPACE
+  # # Install CatalogSource in OLM namespace
+  # oc apply -n $OLM_NAMESPACE -f https://raw.githubusercontent.com/openshift/knative-serving/release-v0.8.1/openshift/olm/knative-serving.catalogsource.yaml
+  # timeout_non_zero 900 '[[ $(oc get pods -n $OLM_NAMESPACE | grep -c serverless) -eq 0 ]]' || return 1
+  # wait_until_pods_running $OLM_NAMESPACE
 
   # Deploy Serverless Operator
   deploy_serverless_operator
@@ -116,9 +116,6 @@ metadata:
   name: knative-serving
   namespace: ${SERVING_NAMESPACE}
 EOF
-
-  # Create imagestream for images generated in CI namespace
-  tag_core_images openshift/release/knative-serving-ci.yaml
 
   # Wait for 6 pods to appear first
   timeout_non_zero 900 '[[ $(oc get pods -n $SERVING_NAMESPACE --no-headers | wc -l) -lt 6 ]]' || return 1
