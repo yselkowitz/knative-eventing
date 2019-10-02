@@ -125,30 +125,33 @@ EOF
 }
 
 function deploy_serverless_operator(){
-  local NAME="serverless-operator"
+  # Install the RH Serverless Operator
+  oc apply -f openshift/serverless/operator-install.yaml
 
-  if oc get crd operatorgroups.operators.coreos.com >/dev/null 2>&1; then
-    cat <<-EOF | oc apply -f -
-apiVersion: operators.coreos.com/v1
-kind: OperatorGroup
-metadata:
-  name: ${NAME}
-  namespace: ${SERVING_NAMESPACE}
-EOF
-  fi
+#   local NAME="serverless-operator"
 
-  cat <<-EOF | oc apply -f -
-apiVersion: operators.coreos.com/v1alpha1
-kind: Subscription
-metadata:
-  name: ${NAME}-subscription
-  namespace: ${SERVING_NAMESPACE}
-spec:
-  source: ${NAME}
-  sourceNamespace: $OLM_NAMESPACE
-  name: ${NAME}
-  channel: techpreview
-EOF
+#   if oc get crd operatorgroups.operators.coreos.com >/dev/null 2>&1; then
+#     cat <<-EOF | oc apply -f -
+# apiVersion: operators.coreos.com/v1
+# kind: OperatorGroup
+# metadata:
+#   name: ${NAME}
+#   namespace: ${SERVING_NAMESPACE}
+# EOF
+#   fi
+
+#   cat <<-EOF | oc apply -f -
+# apiVersion: operators.coreos.com/v1alpha1
+# kind: Subscription
+# metadata:
+#   name: ${NAME}-subscription
+#   namespace: ${SERVING_NAMESPACE}
+# spec:
+#   source: ${NAME}
+#   sourceNamespace: $OLM_NAMESPACE
+#   name: ${NAME}
+#   channel: techpreview
+# EOF
 }
 
 function create_knative_namespace(){
