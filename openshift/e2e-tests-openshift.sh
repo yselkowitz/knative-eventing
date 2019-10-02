@@ -281,8 +281,7 @@ function tag_core_images(){
   IMAGE_NAMES=$(cat $resolved_file_name | grep -i "image:\|value:" | grep "$INTERNAL_REGISTRY" | awk '{print $2}' | awk -F '/' '{print $3}')
   for nametag in $IMAGE_NAMES; do
     name=$(echo $nametag | cut -d: -f1)
-    tag=$(echo $nametag | cut -d: -f2)
-    tag_built_image ${name} ${name} ${tag}
+    tag_built_image ${name} ${name}
   done
 }
 
@@ -365,7 +364,7 @@ function tag_test_images() {
 
   for image_dir in ${image_dirs}; do
     name=$(basename ${image_dir})
-    tag_built_image knative-eventing-test-${name} ${name} latest
+    tag_built_image knative-eventing-test-${name} ${name}
 
   done
 }
@@ -373,8 +372,7 @@ function tag_test_images() {
 function tag_built_image() {
   local remote_name=$1
   local local_name=$2
-  local build_tag=$3
-  oc tag --insecure=${INSECURE} -n ${EVENTING_NAMESPACE} ${OPENSHIFT_REGISTRY}/${OPENSHIFT_BUILD_NAMESPACE}/stable:${remote_name} ${local_name}:${build_tag}
+  oc tag --insecure=${INSECURE} -n ${EVENTING_NAMESPACE} ${OPENSHIFT_REGISTRY}/${OPENSHIFT_BUILD_NAMESPACE}/stable:${remote_name} ${local_name}:latest
 }
 
 function run_origin_e2e() {
