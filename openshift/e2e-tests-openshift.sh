@@ -20,15 +20,6 @@ readonly SERVICEMESH_NAMESPACE=istio-system
 readonly TARGET_IMAGE_PREFIX="$INTERNAL_REGISTRY/$EVENTING_NAMESPACE/knative-eventing-"
 readonly OLM_NAMESPACE="openshift-operator-lifecycle-manager"
 
-
-# The OLM global namespace was moved to openshift-marketplace since v4.2
-# ref: https://jira.coreos.com/browse/OLM-1190
-# if [ ${HOSTNAME} = "e2e-aws-ocp-41" ]; then
-#   readonly OLM_NAMESPACE="openshift-operator-lifecycle-manager"
-# else
-#   readonly OLM_NAMESPACE="openshift-marketplace"
-# fi
-
 env
 
 # Loops until duration (car) is exceeded or command (cdr) returns non-zero
@@ -71,7 +62,7 @@ function install_servicemesh(){
   # Deploy ServiceMesh
   oc new-project $SERVICEMESH_NAMESPACE
   oc apply -n $SERVICEMESH_NAMESPACE -f https://raw.githubusercontent.com/openshift/knative-serving/release-v0.8.1/openshift/servicemesh/controlplane-install.yaml
-  cat <<EOF | oc apply -f -
+  cat <<EOF >> ServiceMeshMemberRoll.yaml
 apiVersion: maistra.io/v1
 kind: ServiceMeshMemberRoll
 metadata:
@@ -83,6 +74,18 @@ spec:
   - ${EVENTING_NAMESPACE}
 EOF
 
+  # process array to create the NS and give SCC
+  testNamesArray=($(cat TEST_NAMES |tr "\n" " "))
+  for i in "${testNamesArray[@]}"
+  do
+  # append test NS members
+ cat <<-EOF >> ServiceMeshMemberRoll.yaml
+- $i
+EOF
+  done
+
+  oc apply -f ServiceMeshMemberRoll.yaml
+
   # Wait for the ingressgateway pod to appear.
   timeout_non_zero 900 '[[ $(oc get pods -n $SERVICEMESH_NAMESPACE | grep -c istio-ingressgateway) -eq 0 ]]' || return 1
 
@@ -91,6 +94,7 @@ EOF
 
   wait_until_pods_running $SERVICEMESH_NAMESPACE
 
+  rm ServiceMeshMemberRoll.yaml
   header "ServiceMesh installed successfully"
 }
 
@@ -127,33 +131,7 @@ EOF
 }
 
 function deploy_serverless_operator(){
-  # Install the RH Serverless Operator
   oc apply -f openshift/serverless/operator-install.yaml
-
-#   local NAME="serverless-operator"
-
-#   if oc get crd operatorgroups.operators.coreos.com >/dev/null 2>&1; then
-#     cat <<-EOF | oc apply -f -
-# apiVersion: operators.coreos.com/v1
-# kind: OperatorGroup
-# metadata:
-#   name: ${NAME}
-#   namespace: ${SERVING_NAMESPACE}
-# EOF
-#   fi
-
-#   cat <<-EOF | oc apply -f -
-# apiVersion: operators.coreos.com/v1alpha1
-# kind: Subscription
-# metadata:
-#   name: ${NAME}-subscription
-#   namespace: ${SERVING_NAMESPACE}
-# spec:
-#   source: ${NAME}
-#   sourceNamespace: $OLM_NAMESPACE
-#   name: ${NAME}
-#   channel: techpreview
-# EOF
 }
 
 function create_knative_namespace(){
@@ -220,13 +198,16 @@ function install_knative_eventing(){
   create_knative_namespace eventing
 
 
-  echo ">> Patching Knative Eventing CatalogSource to reference CI produced images"
-  CURRENT_GIT_BRANCH=$(git rev-parse --abbrev-ref HEAD)
-  RELEASE_YAML="https://raw.githubusercontent.com/openshift/knative-eventing/${CURRENT_GIT_BRANCH}/openshift/release/knative-eventing-ci.yaml"
-  sed "s|--filename=.*|--filename=${RELEASE_YAML}|"  openshift/olm/knative-eventing.catalogsource.yaml > knative-eventing.catalogsource-ci.yaml
+  # echo ">> Patching Knative Eventing CatalogSource to reference CI produced images"
+  # CURRENT_GIT_BRANCH=$(git rev-parse --abbrev-ref HEAD)
+  # RELEASE_YAML="https://raw.githubusercontent.com/openshift/knative-eventing/${CURRENT_GIT_BRANCH}/openshift/release/knative-eventing-ci.yaml"
+  # sed "s|--filename=.*|--filename=${RELEASE_YAML}|"  openshift/olm/knative-eventing.catalogsource.yaml > knative-eventing.catalogsource-ci.yaml
 
-  # Install CatalogSources in OLM namespace
-  oc apply -n $OLM_NAMESPACE -f knative-eventing.catalogsource-ci.yaml
+  # # Install CatalogSources in OLM namespace
+  # oc apply -n $OLM_NAMESPACE -f knative-eventing.catalogsource-ci.yaml
+
+
+  oc apply -n $OLM_NAMESPACE -f openshift/olm/knative-eventing.catalogsource.yaml
   timeout_non_zero 900 '[[ $(oc get pods -n $OLM_NAMESPACE | grep -c knative-eventing) -eq 0 ]]' || return 1
   wait_until_pods_running $OLM_NAMESPACE
 
