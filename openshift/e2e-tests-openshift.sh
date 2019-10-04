@@ -103,11 +103,6 @@ function install_knative_serving(){
 
   oc new-project $SERVING_NAMESPACE
 
-  # # Install CatalogSource in OLM namespace
-  # oc apply -n $OLM_NAMESPACE -f https://raw.githubusercontent.com/openshift/knative-serving/release-v0.8.1/openshift/olm/knative-serving.catalogsource.yaml
-  # timeout_non_zero 900 '[[ $(oc get pods -n $OLM_NAMESPACE | grep -c serverless) -eq 0 ]]' || return 1
-  # wait_until_pods_running $OLM_NAMESPACE
-
   # Deploy Serverless Operator
   deploy_serverless_operator
 
@@ -182,14 +177,6 @@ function deploy_knative_operator(){
   # # Wait until the server knows about the Install CRD before creating
   # # an instance of it below
   timeout_non_zero 60 '[[ $(oc get crd knative${API_GROUP}s.${API_GROUP}.knative.dev -o jsonpath="{.status.acceptedNames.kind}" | grep -c $KIND) -eq 0 ]]' || return 1
-  
-  # cat <<-EOF | oc apply -f -
-  # apiVersion: ${API_GROUP}.knative.dev/v1alpha1
-  # kind: $KIND
-  # metadata:
-  #   name: ${COMPONENT}
-  #   namespace: ${COMPONENT}
-	# EOF
 }
 
 function install_knative_eventing(){
@@ -198,16 +185,13 @@ function install_knative_eventing(){
   create_knative_namespace eventing
 
 
-  # echo ">> Patching Knative Eventing CatalogSource to reference CI produced images"
-  # CURRENT_GIT_BRANCH=$(git rev-parse --abbrev-ref HEAD)
-  # RELEASE_YAML="https://raw.githubusercontent.com/openshift/knative-eventing/${CURRENT_GIT_BRANCH}/openshift/release/knative-eventing-ci.yaml"
-  # sed "s|--filename=.*|--filename=${RELEASE_YAML}|"  openshift/olm/knative-eventing.catalogsource.yaml > knative-eventing.catalogsource-ci.yaml
+  echo ">> Patching Knative Eventing CatalogSource to reference CI produced images"
+  CURRENT_GIT_BRANCH=$(git rev-parse --abbrev-ref HEAD)
+  RELEASE_YAML="https://raw.githubusercontent.com/openshift/knative-eventing/${CURRENT_GIT_BRANCH}/openshift/release/knative-eventing-ci.yaml"
+  sed "s|--filename=.*|--filename=${RELEASE_YAML}|"  openshift/olm/knative-eventing.catalogsource.yaml > knative-eventing.catalogsource-ci.yaml
 
-  # # Install CatalogSources in OLM namespace
-  # oc apply -n $OLM_NAMESPACE -f knative-eventing.catalogsource-ci.yaml
-
-
-  oc apply -n $OLM_NAMESPACE -f openshift/olm/knative-eventing.catalogsource.yaml
+  # Install CatalogSources in OLM namespace
+  oc apply -n $OLM_NAMESPACE -f knative-eventing.catalogsource-ci.yaml
   timeout_non_zero 900 '[[ $(oc get pods -n $OLM_NAMESPACE | grep -c knative-eventing) -eq 0 ]]' || return 1
   wait_until_pods_running $OLM_NAMESPACE
 
