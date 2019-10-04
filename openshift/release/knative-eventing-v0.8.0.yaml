@@ -1078,7 +1078,6 @@ spec:
     plural: clusterchannelprovisioners
     singular: clusterchannelprovisioner
     categories:
-    - all
     - knative
     - eventing
     - provisioner
