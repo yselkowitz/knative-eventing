@@ -1724,7 +1724,7 @@ spec:
       containers:
       - name: eventing-controller
         terminationMessagePolicy: FallbackToLogsOnError
-        image: quay.io/openshift-knative/knative-eventing-controller:v0.9.0
+        image: image-registry.openshift-image-registry.svc:5000/knative-eventing/knative-eventing-controller
         env:
           - name: SYSTEM_NAMESPACE
             valueFrom:
@@ -1737,11 +1737,11 @@ spec:
           - name: METRICS_DOMAIN
             value: knative.dev/eventing
           - name: BROKER_INGRESS_IMAGE
-            value: quay.io/openshift-knative/knative-eventing-ingress:v0.9.0
+            value: image-registry.openshift-image-registry.svc:5000/knative-eventing/knative-eventing-ingress
           - name: BROKER_INGRESS_SERVICE_ACCOUNT
             value: eventing-broker-ingress
           - name: BROKER_FILTER_IMAGE
-            value: quay.io/openshift-knative/knative-eventing-filter:v0.9.0
+            value: image-registry.openshift-image-registry.svc:5000/knative-eventing/knative-eventing-filter
           - name: BROKER_FILTER_SERVICE_ACCOUNT
             value: eventing-broker-filter
         ports:
@@ -1778,7 +1778,7 @@ spec:
       serviceAccountName: eventing-source-controller
       containers:
       - name: controller
-        image: quay.io/openshift-knative/knative-eventing-sources-controller:v0.9.0
+        image: image-registry.openshift-image-registry.svc:5000/knative-eventing/knative-eventing-sources-controller
         resources:
           requests:
             cpu: 100m
@@ -1801,9 +1801,9 @@ spec:
           - name: METRICS_DOMAIN
             value: knative.dev/sources
           - name: CRONJOB_RA_IMAGE
-            value: quay.io/openshift-knative/knative-eventing-cronjob-receive-adapter:v0.9.0
+            value: image-registry.openshift-image-registry.svc:5000/knative-eventing/knative-eventing-cronjob-receive-adapter
           - name: APISERVER_RA_IMAGE
-            value: quay.io/openshift-knative/knative-eventing-apiserver-receive-adapter:v0.9.0
+            value: image-registry.openshift-image-registry.svc:5000/knative-eventing/knative-eventing-apiserver-receive-adapter
       volumes:
         - name: config-logging
           configMap:
@@ -1832,7 +1832,7 @@ spec:
       containers:
       - name: eventing-webhook
         terminationMessagePolicy: FallbackToLogsOnError
-        image: quay.io/openshift-knative/knative-eventing-webhook:v0.9.0
+        image: image-registry.openshift-image-registry.svc:5000/knative-eventing/knative-eventing-webhook
         volumeMounts:
         - name: config-logging
           mountPath: /etc/config-logging
@@ -1908,7 +1908,6 @@ data:
     stackdriver-project-id: "my-project"
     debug: "false"
     sample-rate: "0.1"
----
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
@@ -2216,7 +2215,7 @@ spec:
       serviceAccountName: imc-controller
       containers:
       - name: controller
-        image: quay.io/openshift-knative/knative-eventing-imc-controller:v0.9.0
+        image: image-registry.openshift-image-registry.svc:5000/knative-eventing/knative-eventing-imc-controller
         env:
           - name: CONFIG_LOGGING_NAME
             value: config-logging
@@ -2259,7 +2258,7 @@ spec:
       serviceAccountName: imc-dispatcher
       containers:
       - name: dispatcher
-        image: quay.io/openshift-knative/knative-eventing-imc-dispatcher:v0.9.0
+        image: image-registry.openshift-image-registry.svc:5000/knative-eventing/knative-eventing-imc-dispatcher
         env:
           - name: CONFIG_LOGGING_NAME
             value: config-logging
