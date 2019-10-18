@@ -18,7 +18,13 @@ readonly SERVING_NAMESPACE=knative-serving
 readonly EVENTING_NAMESPACE=knative-eventing
 readonly SERVICEMESH_NAMESPACE=istio-system
 readonly TARGET_IMAGE_PREFIX="$INTERNAL_REGISTRY/$EVENTING_NAMESPACE/knative-eventing-"
-readonly OLM_NAMESPACE="openshift-marketplace"
+# The OLM global namespace was moved to openshift-marketplace since v4.2
+# ref: https://jira.coreos.com/browse/OLM-1190
+if [ ${HOSTNAME} = "e2e-aws-ocp-41" ]; then
+  readonly OLM_NAMESPACE="openshift-operator-lifecycle-manager"
+else
+  readonly OLM_NAMESPACE="openshift-marketplace"
+fi
 
 env
 
