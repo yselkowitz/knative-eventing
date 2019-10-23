@@ -288,6 +288,7 @@ rules:
     resources:
       - "sequences/finalizers"
       - "choices/finalizers"
+      - "channels/finalizers"
     verbs:
       - "update"
   - apiGroups:
