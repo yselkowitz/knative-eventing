@@ -227,18 +227,31 @@ function create_test_resources() {
   # process array to create the NS and give SCC
   for i in "${testNamesArray[@]}"
   do
-    oc create serviceaccount eventing-broker-ingress -n $i
-    oc create serviceaccount eventing-broker-filter -n $i
-    oc adm policy add-scc-to-user anyuid -z default -n $i
-    oc adm policy add-scc-to-user privileged -z default -n $i
-    oc adm policy add-scc-to-user anyuid -z eventing-broker-filter -n $i
-    oc adm policy add-scc-to-user privileged -z eventing-broker-filter -n $i
-    oc adm policy add-cluster-role-to-user cluster-admin -z eventing-broker-filter -n $i
-    oc adm policy add-scc-to-user anyuid -z eventing-broker-ingress -n $i
-    oc adm policy add-scc-to-user privileged -z eventing-broker-ingress -n $i
-    oc adm policy add-cluster-role-to-user cluster-admin -z eventing-broker-ingress -n $i
+    prepare_namespaces $i
   done
 
+  prepare_test_broker_namespaces "test-broker-channel-flow-in-memory-channel"
+}
+
+function prepare_namespaces() {
+  local ns=$1
+
+  oc create serviceaccount eventing-broker-ingress -n $ns
+  oc create serviceaccount eventing-broker-filter -n $ns
+  prepare_test_broker_namespaces $ns
+}
+
+function prepare_test_broker_namespaces() {
+  local ns=$1
+
+  oc adm policy add-scc-to-user anyuid -z default -n $ns
+  oc adm policy add-scc-to-user privileged -z default -n $ns
+  oc adm policy add-scc-to-user anyuid -z eventing-broker-filter -n $ns
+  oc adm policy add-scc-to-user privileged -z eventing-broker-filter -n $ns
+  oc adm policy add-cluster-role-to-user cluster-admin -z eventing-broker-filter -n $ns
+  oc adm policy add-scc-to-user anyuid -z eventing-broker-ingress -n $ns
+  oc adm policy add-scc-to-user privileged -z eventing-broker-ingress -n $ns
+  oc adm policy add-cluster-role-to-user cluster-admin -z eventing-broker-ingress -n $ns
 }
 
 function tag_core_images(){
@@ -269,6 +282,7 @@ function readTestFiles() {
 
  echo "test-channel-namespace-defaulter-in-memory-channel" >> TEST_NAMES;
  echo "test-channel-cluster-defaulter-in-memory-channel" >> TEST_NAMES;
+
 }
 
 function create_test_namespace(){
@@ -380,9 +394,9 @@ function scale_up_workers(){
 
   # Get the name of the first machineset that has at least 1 replica
   local machineset=$(oc get machineset -n ${cluster_api_ns} -o custom-columns="name:{.metadata.name},replicas:{.spec.replicas}" | grep " 1" | head -n 1 | awk '{print $1}')
-  # Bump the number of replicas to 6 (+ 1 + 1 == 8 workers)
-  oc patch machineset -n ${cluster_api_ns} ${machineset} -p '{"spec":{"replicas":6}}' --type=merge
-  wait_until_machineset_scales_up ${cluster_api_ns} ${machineset} 6
+  # Bump the number of replicas to 8 (+ 1 + 1 == 10 workers)
+  oc patch machineset -n ${cluster_api_ns} ${machineset} -p '{"spec":{"replicas":8}}' --type=merge
+  wait_until_machineset_scales_up ${cluster_api_ns} ${machineset} 8
 }
 
 # Waits until the machineset in the given namespaces scales up to the
