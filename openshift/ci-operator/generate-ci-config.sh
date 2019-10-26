@@ -10,7 +10,7 @@ tag_specification:
 promotion:
   cluster: https://api.ci.openshift.org
   namespace: openshift
-  name: $branch-ocp-${openshift//./}
+  name: $branch
 base_images:
   base:
     name: '$openshift'
