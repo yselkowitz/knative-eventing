@@ -286,6 +286,7 @@ rules:
     resources:
       - "sequences/finalizers"
       - "parallels/finalizers"
+      - "channels/finalizers"
     verbs:
       - "update"
   - apiGroups:
