@@ -17,7 +17,7 @@ function resolve_resources(){
     # 1. Prefix test image references with test-
     # 2. Rewrite image references
     # 3. Remove comment lines
-    # 3. Remove empty lines
+    # 4. Remove empty lines
     sed -e "s+\(.* image: \)\(knative.dev\)\(.*/\)\(test/\)\(.*\)+\1\2 \3\4test-\5+g" \
         -e "s+knative.dev/eventing/cmd/broker/ingress+${image_prefix}ingress${image_tag}+" \
         -e "s+knative.dev/eventing/cmd/broker/filter+${image_prefix}filter${image_tag}+" \

@@ -13,7 +13,7 @@ fixes needed only for the OpenShift side of things.
 
 ## How this repository works ?
 
-The `master` branch holds up-to-date specific [openshift files](./openshift) 
+The `master` branch holds up-to-date specific [openshift files](./openshift)
 that are necessary for CI setups and maintaining it. This includes:
 
 - Scripts to create a new release branch from `upstream`
@@ -33,7 +33,7 @@ For the CI setup, two repositories are of importance:
 - [openshift/release](https://github.com/openshift/release) which
   contains the configuration of CI jobs that are run on this
   repository
-  
+
 All of the following is based on OpenShift’s CI operator
 configs. General understanding of that mechanism is assumed in the
 following documentation.
@@ -88,7 +88,11 @@ this PR is merged, the CI setup for that branch is active.
 
 #### Building upstream
 
-1. Create a release branch from the upstream’s release tag, i.e. release-v0.5.0. This is created in the fork that we maintain of upstream. See our branching instructions for deeper information.
+[The release README](openshift/release/README.md) provides more detail for
+steps 1. and 2. below.
+
+
+1. Create a release branch from the upstream’s release tag, i.e. release-v0.5.0. This is created in the fork that we maintain of upstream.
 2. Create a CI job for that branch in openshift/release. See our CI setup instructions for deeper information.
 3. Do whatever you need to do to make this CI pass
 4. Create a “dummy” PR with a ci file, which contains the current output of “date”. This is to trigger CI explicitly.
@@ -133,5 +137,4 @@ DIR=openshift/olm \
 
 #### Gather release notes from JIRA/GitHub
 
-#### Send a release announcement 
-
+#### Send a release announcement

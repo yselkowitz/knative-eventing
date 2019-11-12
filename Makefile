@@ -2,8 +2,12 @@
 
 CGO_ENABLED=0
 GOOS=linux
-CORE_IMAGES=./cmd/apiserver_receive_adapter ./cmd/broker/ingress/ ./cmd/broker/filter/ ./cmd/controller/ ./cmd/cronjob_receive_adapter ./cmd/pong/ ./cmd/sendevent/ ./cmd/sources_controller ./cmd/webhook/
+CORE_IMAGES=$(shell find ./cmd -name main.go | sed 's/main.go//')
 TEST_IMAGES=$(shell find ./test/test_images -mindepth 1 -maxdepth 1 -type d)
+LOCAL_IMAGES=imc-controller imc-dispatcher
+
+# Guess location of openshift/release repo. NOTE: override this if it is not correct.
+OPENSHIFT=${CURDIR}/../../github.com/openshift/release
 
 install:
 	go install $(CORE_IMAGES)
@@ -12,9 +16,7 @@ install:
 .PHONY: install
 
 test-install:
-	for img in $(TEST_IMAGES); do \
-		go install $$img ; \
-	done
+	go install $(TEST_IMAGES)
 .PHONY: test-install
 
 test-e2e:
@@ -27,14 +29,7 @@ test-origin-conformance:
 
 # Generate Dockerfiles used by ci-operator. The files need to be committed manually.
 generate-dockerfiles:
-	# remove old shizzle to catch when images got removed!
-	# rm -rf openshift/ci-operator/knative-images/*
-	# rm -rf openshift/ci-operator/knative-test-images/*
-
-	# regenerate the images...
-	./openshift/ci-operator/generate-dockerfiles.sh openshift/ci-operator/knative-images $(CORE_IMAGES)
-	./openshift/ci-operator/generate-dockerfiles.sh openshift/ci-operator/knative-images imc-controller
-	./openshift/ci-operator/generate-dockerfiles.sh openshift/ci-operator/knative-images imc-dispatcher
+	./openshift/ci-operator/generate-dockerfiles.sh openshift/ci-operator/knative-images $(CORE_IMAGES) $(LOCAL_IMAGES)
 	./openshift/ci-operator/generate-dockerfiles.sh openshift/ci-operator/knative-test-images $(TEST_IMAGES)
 .PHONY: generate-dockerfiles
 
@@ -43,8 +38,8 @@ generate-release:
 	./openshift/release/generate-release.sh $(RELEASE)
 .PHONY: generate-release
 
-# Generates a ci-operator configuration for a specific branch.
-generate-ci-config:
-	./openshift/ci-operator/generate-ci-config.sh $(BRANCH) 4.2 > ci-operator-config.yaml
-	./openshift/ci-operator/generate-ci-config.sh $(BRANCH) 4.3 > ci-operator-config_43.yaml
-.PHONY: generate-ci-config
+# Update CI configuration in the $(OPENSHIFT) directory.
+# NOTE: Makes changes outside this repository.
+update-ci:
+	sh ./openshift/ci-operator/update-ci.sh $(OPENSHIFT) $(CORE_IMAGES) $(LOCAL_IMAGES)
+.PHONY: update-ci
