@@ -5,8 +5,6 @@ source $(dirname $0)/release/resolve.sh
 
 set -x
 
-readonly SERVING_VERSION=v0.9.0
-
 readonly K8S_CLUSTER_OVERRIDE=$(oc config current-context | awk -F'/' '{print $2}')
 readonly API_SERVER=$(oc config view --minify | grep server | awk -F'//' '{print $2}' | awk -F':' '{print $1}')
 readonly INTERNAL_REGISTRY="${INTERNAL_REGISTRY:-"image-registry.openshift-image-registry.svc:5000"}"
@@ -84,18 +82,20 @@ EOF
 }
 
 function deploy_serverless_operator(){
-  local NAME="serverless-operator"
+  local name="serverless-operator"
+  local operator_ns
+  operator_ns=$(kubectl get og --all-namespaces | grep global-operators | awk '{print $1}')
 
   cat <<-EOF | oc apply -f -
 apiVersion: operators.coreos.com/v1alpha1
 kind: Subscription
 metadata:
-  name: ${NAME}-subscription
-  namespace: openshift-operators
+  name: ${name}-subscription
+  namespace: ${operator_ns}
 spec:
-  source: ${NAME}
+  source: ${name}
   sourceNamespace: $OLM_NAMESPACE
-  name: ${NAME}
+  name: ${name}
   channel: techpreview
 EOF
 }
