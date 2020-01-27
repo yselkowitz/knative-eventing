@@ -1,9 +1,9 @@
 diff --git a/test/e2e/parallel_test.go b/test/e2e/parallel_test.go
-index d63324c8..47ee5b96 100644
+index f5afe48c..e8fcd1cd 100644
 --- a/test/e2e/parallel_test.go
 +++ b/test/e2e/parallel_test.go
-@@ -33,6 +33,7 @@ import (
- )
+@@ -40,6 +40,7 @@ type branchConfig struct {
+ }
  
  func TestFlowsParallel(t *testing.T) {
 +	t.Skip("skipping")
@@ -11,10 +11,10 @@ index d63324c8..47ee5b96 100644
  		senderPodName = "e2e-parallel"
  	)
 diff --git a/test/e2e/sequence_test.go b/test/e2e/sequence_test.go
-index d64a1a01..fb8fea8f 100644
+index 0cbf7daf..9d220404 100644
 --- a/test/e2e/sequence_test.go
 +++ b/test/e2e/sequence_test.go
-@@ -34,6 +34,7 @@ import (
+@@ -36,6 +36,7 @@ import (
  )
  
  func TestFlowsSequence(t *testing.T) {
