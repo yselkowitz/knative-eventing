@@ -1,7 +1,7 @@
-diff --git a/test/e2e/flows_parallel_test.go b/test/e2e/flows_parallel_test.go
+diff --git a/test/e2e/parallel_test.go b/test/e2e/parallel_test.go
 index d63324c8..47ee5b96 100644
---- a/test/e2e/flows_parallel_test.go
-+++ b/test/e2e/flows_parallel_test.go
+--- a/test/e2e/parallel_test.go
++++ b/test/e2e/parallel_test.go
 @@ -33,6 +33,7 @@ import (
  )
  
@@ -10,10 +10,10 @@ index d63324c8..47ee5b96 100644
  	const (
  		senderPodName = "e2e-parallel"
  	)
-diff --git a/test/e2e/flows_sequence_test.go b/test/e2e/flows_sequence_test.go
+diff --git a/test/e2e/sequence_test.go b/test/e2e/sequence_test.go
 index d64a1a01..fb8fea8f 100644
---- a/test/e2e/flows_sequence_test.go
-+++ b/test/e2e/flows_sequence_test.go
+--- a/test/e2e/sequence_test.go
++++ b/test/e2e/sequence_test.go
 @@ -34,6 +34,7 @@ import (
  )
  
