@@ -21,7 +21,7 @@ function resolve_resources(){
     sed -e "s+\(.* image: \)\(knative.dev\)\(.*/\)\(test/\)\(.*\)+\1\2 \3\4test-\5+g" \
         -e "s+knative.dev/eventing/cmd/broker/ingress+${image_prefix}ingress${image_tag}+" \
         -e "s+knative.dev/eventing/cmd/broker/filter+${image_prefix}filter${image_tag}+" \
-        -e "s+knative.dev/eventing/cmd/broker/channel_broker+${image_prefix}channel-broker${image_tag}+" \
+        -e "s+knative.dev/eventing/cmd/channel_broker+${image_prefix}channel-broker${image_tag}+" \
         -e "s+knative.dev/eventing/cmd/in_memory/channel_controller+${image_prefix}channel-controller${image_tag}+" \
         -e "s+knative.dev/eventing/cmd/in_memory/channel_dispatcher+${image_prefix}channel-dispatcher${image_tag}+" \
         -e "s+knative.dev/eventing/cmd/cronjob_receive_adapter+${image_prefix}cronjob-receive-adapter${image_tag}+" \
