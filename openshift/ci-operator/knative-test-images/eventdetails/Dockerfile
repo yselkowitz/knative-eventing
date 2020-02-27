@@ -1,5 +1,5 @@
 # Do not edit! This file was generated via Makefile
 FROM openshift/origin-base
 
-ADD heartbeats /usr/bin/heartbeats
-ENTRYPOINT ["/usr/bin/heartbeats"]
+ADD eventdetails /usr/bin/eventdetails
+ENTRYPOINT ["/usr/bin/eventdetails"]
