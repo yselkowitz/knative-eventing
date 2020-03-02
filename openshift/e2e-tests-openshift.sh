@@ -75,8 +75,10 @@ EOF
   timeout_non_zero 900 '[[ $(oc get pods -n $SERVING_NAMESPACE --no-headers | wc -l) -lt 4 ]]' || return 1
   wait_until_pods_running $SERVING_NAMESPACE || return 1
 
-  wait_until_service_has_external_ip $SERVICEMESH_NAMESPACE istio-ingressgateway || fail_test "Ingress has no external IP"
-  wait_until_hostname_resolves "$(kubectl get svc -n $SERVICEMESH_NAMESPACE istio-ingressgateway -o jsonpath='{.status.loadBalancer.ingress[0].hostname}')"
+  wait_until_pods_running $SERVICEMESH_NAMESPACE || return 1
+
+  # wait_until_service_has_external_ip $SERVICEMESH_NAMESPACE istio-ingressgateway || fail_test "Ingress has no external IP"
+  # wait_until_hostname_resolves "$(kubectl get svc -n $SERVICEMESH_NAMESPACE istio-ingressgateway -o jsonpath='{.status.loadBalancer.ingress[0].hostname}')"
 
   header "Knative Serving Installed successfully"
 }
@@ -258,7 +260,7 @@ function run_e2e_tests(){
     -v -tags=e2e -count=1 -timeout=70m -parallel=1 \
     ./test/e2e \
     --kubeconfig "$KUBECONFIG" \
-    --dockerrepo "${INTERNAL_REGISTRY}/${EVENTING_NAMESPACE}" \
+    --dockerrepo "quay.io/openshift-knative" \
     ${options} || failed=1
 }
 
