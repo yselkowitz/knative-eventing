@@ -19,6 +19,7 @@ function resolve_resources(){
     # 3. Remove comment lines
     # 4. Remove empty lines
     sed -e "s+\(.* image: \)\(knative.dev\)\(.*/\)\(test/\)\(.*\)+\1\2 \3\4test-\5+g" \
+        -e "s+ko://++" \
         -e "s+knative.dev/eventing/cmd/broker/ingress+${image_prefix}ingress${image_tag}+" \
         -e "s+knative.dev/eventing/cmd/broker/filter+${image_prefix}filter${image_tag}+" \
         -e "s+knative.dev/eventing/cmd/channel_broker+${image_prefix}channel-broker${image_tag}+" \
