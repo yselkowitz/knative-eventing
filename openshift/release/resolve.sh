@@ -25,8 +25,8 @@ function resolve_resources(){
         -e "s+knative.dev/eventing/cmd/channel_broker+${image_prefix}channel-broker${image_tag}+" \
         -e "s+knative.dev/eventing/cmd/in_memory/channel_controller+${image_prefix}channel-controller${image_tag}+" \
         -e "s+knative.dev/eventing/cmd/in_memory/channel_dispatcher+${image_prefix}channel-dispatcher${image_tag}+" \
-        -e "s+knative.dev/eventing/cmd/cronjob_receive_adapter+${image_prefix}cronjob-receive-adapter${image_tag}+" \
-        -e "s+knative.dev/eventing/cmd/ping+${image_prefix}ping${image_tag}+" \
+        -e "s+knative.dev/eventing/cmd/ping/adapter+${image_prefix}adapter${image_tag}+" \
+        -e "s+knative.dev/eventing/cmd/ping/jobrunner+${image_prefix}jobrunner${image_tag}+" \
         -e "s+knative.dev/eventing/cmd/apiserver_receive_adapter+${image_prefix}apiserver-receive-adapter${image_tag}+" \
         -e "s+\(.* image: \)\(knative.dev\)\(.*/\)\(.*\)+\1${image_prefix}\4${image_tag}+g" \
         -e '/^[ \t]*#/d' \
