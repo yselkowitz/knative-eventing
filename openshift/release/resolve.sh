@@ -22,7 +22,10 @@ function resolve_resources(){
         -e "s+ko://++" \
         -e "s+knative.dev/eventing/cmd/broker/ingress+${image_prefix}ingress${image_tag}+" \
         -e "s+knative.dev/eventing/cmd/broker/filter+${image_prefix}filter${image_tag}+" \
+        -e "s+knative.dev/eventing/cmd/mtbroker/ingress+${image_prefix}mtbroker-ingress${image_tag}+" \
+        -e "s+knative.dev/eventing/cmd/mtbroker/filter+${image_prefix}mtbroker-filter${image_tag}+" \
         -e "s+knative.dev/eventing/cmd/channel_broker+${image_prefix}channel-broker${image_tag}+" \
+        -e "s+knative.dev/eventing/cmd/mtchannel_broker+${image_prefix}mtchannel-broker${image_tag}+" \
         -e "s+knative.dev/eventing/cmd/in_memory/channel_controller+${image_prefix}channel-controller${image_tag}+" \
         -e "s+knative.dev/eventing/cmd/in_memory/channel_dispatcher+${image_prefix}channel-dispatcher${image_tag}+" \
         -e "s+knative.dev/eventing/cmd/ping/adapter+${image_prefix}adapter${image_tag}+" \
