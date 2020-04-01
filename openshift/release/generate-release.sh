@@ -21,7 +21,13 @@ resolve_resources config/channels/in-memory-channel/ crd-channel-resolved.yaml $
 cat crd-channel-resolved.yaml >> $output_file
 rm crd-channel-resolved.yaml
 
-# the MT broker:
+# the Channel Broker:
+output_file="openshift/release/knative-eventing-channelbroker-${release}.yaml"
+resolve_resources config/brokers/channel-broker/ channelbroker-resolved.yaml $image_prefix $tag
+cat channelbroker-resolved.yaml >> $output_file
+rm channelbroker-resolved.yaml
+
+# the MT Broker:
 output_file="openshift/release/knative-eventing-mtbroker-${release}.yaml"
 resolve_resources config/brokers/mt-channel-broker/ mtbroker-resolved.yaml $image_prefix $tag
 cat mtbroker-resolved.yaml >> $output_file
