@@ -446,6 +446,7 @@ data:
             primitives to enable late-binding event sources and event
             consumers.
           repository: https://github.com/openshift-knative/knative-eventing-operator
+          operators.operatorframework.io/internal-objects: '["knativeeventings.eventing.knative.dev"]'
           support: Red Hat
         name: knative-eventing-operator.v0.12.0
         namespace: placeholder
@@ -519,7 +520,7 @@ data:
                         value: knative-eventing-operator
                       image: quay.io/openshift-knative/knative-eventing-operator:v0.12.0
                       args:
-                        - --filename=https://raw.githubusercontent.com/openshift/knative-eventing/release-v0.12.0/openshift/release/knative-eventing-v0.12.0.yaml,https://raw.githubusercontent.com/openshift-knative/knative-eventing-operator/master/deploy/resources/networkpolicies.yaml
+                        - --filename=https://raw.githubusercontent.com/openshift/knative-eventing/release-v0.12.0/openshift/release/knative-eventing-v0.12.0.yaml
                       imagePullPolicy: Always
                       name: knative-eventing-operator
                       resources: {}
@@ -619,6 +620,7 @@ data:
             common need for cloud native development and provides composable
             primitives to enable late-binding event sources and event
             consumers.
+          operators.operatorframework.io/internal-objects: '["knativeeventings.eventing.knative.dev"]'
           repository: https://github.com/openshift-knative/knative-eventing-operator
           support: Red Hat
         name: knative-eventing-operator.v0.13.0
@@ -693,7 +695,7 @@ data:
                         value: knative-eventing-operator
                       image: quay.io/openshift-knative/knative-eventing-operator:v0.13.0
                       args:
-                        - --filename=https://raw.githubusercontent.com/openshift/knative-eventing/release-next/openshift/release/knative-eventing-ci.yaml,https://raw.githubusercontent.com/openshift-knative/knative-eventing-operator/master/deploy/resources/networkpolicies.yaml
+                        - --filename=https://raw.githubusercontent.com/openshift/knative-eventing/release-next/openshift/release/knative-eventing-ci.yaml,https://raw.githubusercontent.com/openshift/knative-eventing/release-next/openshift/release/knative-eventing-channelbroker-ci.yaml
                       imagePullPolicy: Always
                       name: knative-eventing-operator
                       resources: {}
