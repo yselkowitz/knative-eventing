@@ -206,6 +206,8 @@ function run_e2e_tests(){
   report_go_test \
     -v -tags=e2e -count=1 -timeout=70m -parallel=1 \
     ./test/e2e \
+    -brokerclass=ChannelBasedBroker \
+    -channels=messaging.knative.dev/v1alpha1:InMemoryChannel,messaging.knative.dev/v1alpha1:Channel,messaging.knative.dev/v1beta1:InMemoryChannel \
     --kubeconfig "$KUBECONFIG" \
     --dockerrepo "quay.io/openshift-knative" \
     ${options} || failed=1
