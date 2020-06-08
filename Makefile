@@ -2,7 +2,7 @@
 
 CGO_ENABLED=0
 GOOS=linux
-CORE_IMAGES=$(shell find ./cmd -name main.go | sed 's/main.go//')
+CORE_IMAGES=$(shell find ./cmd -name main.go ! -path "./cmd/broker/*" ! -path "./cmd/mtbroker/*" | sed 's/main.go//')
 TEST_IMAGES=$(shell find ./test/test_images -mindepth 1 -maxdepth 1 -type d)
 
 # Guess location of openshift/release repo. NOTE: override this if it is not correct.
