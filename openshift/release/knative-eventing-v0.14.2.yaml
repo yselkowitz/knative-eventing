@@ -1733,9 +1733,9 @@ spec:
           - name: METRICS_DOMAIN
             value: knative.dev/eventing
           - name: PING_IMAGE
-            value: quay.io/openshift-knative/knative-eventing-ping:v0.14.2/adapter
+            value: quay.io/openshift-knative/knative-eventing-adapter:v0.14.2
           - name: JOB_RUNNER_IMAGE
-            value: quay.io/openshift-knative/knative-eventing-ping:v0.14.2/jobrunner
+            value: quay.io/openshift-knative/knative-eventing-jobrunner:v0.14.2
           - name: APISERVER_RA_IMAGE
             value: quay.io/openshift-knative/knative-eventing-apiserver-receive-adapter:v0.14.2
         securityContext:
