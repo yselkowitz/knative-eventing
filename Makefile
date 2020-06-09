@@ -43,6 +43,7 @@ generate-dockerfiles:
 # Generate an aggregated knative yaml file with replaced image references
 generate-release:
 	./openshift/release/generate-release.sh $(RELEASE)
+	./openshift/release/generate-release.sh $(RELEASE) ci
 .PHONY: generate-release
 
 # Update CI configuration in the $(OPENSHIFT) directory.
