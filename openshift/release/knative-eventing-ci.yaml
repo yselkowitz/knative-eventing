@@ -1716,7 +1716,7 @@ spec:
       containers:
       - name: eventing-controller
         terminationMessagePolicy: FallbackToLogsOnError
-        image: image-registry.openshift-image-registry.svc:5000/knative-eventing/knative-eventing-controller
+        image: registry.svc.ci.openshift.org/openshift/knative-v0.14.2:knative-eventing-controller
         resources:
           requests:
             cpu: 100m
@@ -1733,11 +1733,11 @@ spec:
           - name: METRICS_DOMAIN
             value: knative.dev/eventing
           - name: PING_IMAGE
-            value: image-registry.openshift-image-registry.svc:5000/knative-eventing/knative-eventing-ping/adapter
+            value: registry.svc.ci.openshift.org/openshift/knative-v0.14.2:knative-eventing-adapter
           - name: JOB_RUNNER_IMAGE
-            value: image-registry.openshift-image-registry.svc:5000/knative-eventing/knative-eventing-ping/jobrunner
+            value: registry.svc.ci.openshift.org/openshift/knative-v0.14.2:knative-eventing-jobrunner
           - name: APISERVER_RA_IMAGE
-            value: image-registry.openshift-image-registry.svc:5000/knative-eventing/knative-eventing-apiserver-receive-adapter
+            value: registry.svc.ci.openshift.org/openshift/knative-v0.14.2:knative-eventing-apiserver-receive-adapter
         securityContext:
           allowPrivilegeEscalation: false
         ports:
@@ -1847,7 +1847,7 @@ spec:
       containers:
       - name: eventing-webhook
         terminationMessagePolicy: FallbackToLogsOnError
-        image: image-registry.openshift-image-registry.svc:5000/knative-eventing/knative-eventing-webhook
+        image: registry.svc.ci.openshift.org/openshift/knative-v0.14.2:knative-eventing-webhook
         resources:
           requests:
             cpu: 20m
@@ -2304,7 +2304,7 @@ spec:
       serviceAccountName: imc-controller
       containers:
       - name: controller
-        image: image-registry.openshift-image-registry.svc:5000/knative-eventing/knative-eventing-channel-controller
+        image: registry.svc.ci.openshift.org/openshift/knative-v0.14.2:knative-eventing-channel-controller
         env:
           - name: CONFIG_LOGGING_NAME
             value: config-logging
@@ -2317,7 +2317,7 @@ spec:
               fieldRef:
                 fieldPath: metadata.namespace
           - name: DISPATCHER_IMAGE
-            value: image-registry.openshift-image-registry.svc:5000/knative-eventing/knative-eventing-channel-dispatcher
+            value: registry.svc.ci.openshift.org/openshift/knative-v0.14.2:knative-eventing-channel-dispatcher
         securityContext:
           allowPrivilegeEscalation: false
         ports:
@@ -2346,7 +2346,7 @@ spec:
       serviceAccountName: imc-dispatcher
       containers:
       - name: dispatcher
-        image: image-registry.openshift-image-registry.svc:5000/knative-eventing/knative-eventing-channel-dispatcher
+        image: registry.svc.ci.openshift.org/openshift/knative-v0.14.2:knative-eventing-channel-dispatcher
         env:
           - name: CONFIG_LOGGING_NAME
             value: config-logging

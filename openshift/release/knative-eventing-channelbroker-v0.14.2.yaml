@@ -144,11 +144,11 @@ spec:
           - name: METRICS_DOMAIN
             value: knative.dev/eventing
           - name: BROKER_INGRESS_IMAGE
-            value: quay.io/openshift-knative/knative-eventing-ingress:v0.14.2
+            value: quay.io/openshift-knative/knative-eventing-broker-ingress:v0.14.2
           - name: BROKER_INGRESS_SERVICE_ACCOUNT
             value: eventing-broker-ingress
           - name: BROKER_FILTER_IMAGE
-            value: quay.io/openshift-knative/knative-eventing-filter:v0.14.2
+            value: quay.io/openshift-knative/knative-eventing-broker-filter:v0.14.2
           - name: BROKER_FILTER_SERVICE_ACCOUNT
             value: eventing-broker-filter
           - name: BROKER_IMAGE_PULL_SECRET_NAME
