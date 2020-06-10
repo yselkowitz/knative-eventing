@@ -22,13 +22,14 @@ test -d "$CONFIGDIR" || fail "'$CONFIGDIR' is not a directory"
 CONFIG=$CONFIGDIR/openshift-knative-eventing-release-v$VERSION
 CURDIR=$(dirname $0)
 $CURDIR/generate-ci-config.sh knative-v$VERSION 4.3 > ${CONFIG}.yaml
-$CURDIR/generate-ci-config.sh knative-v$VERSION 4.4 > ${CONFIG}__4.5.yaml
-$CURDIR/generate-ci-config.sh knative-v$VERSION 4.5 > ${CONFIG}__4.5.yaml
+$CURDIR/generate-ci-config.sh knative-v$VERSION 4.4 true > ${CONFIG}__4.4.yaml
+$CURDIR/generate-ci-config.sh knative-v$VERSION 4.5 true > ${CONFIG}__4.5.yaml
 
 # Append missing lines to the mirror file.
 [ -n "$(tail -c1 $MIRROR)" ] && echo >> $MIRROR # Make sure there's a newline
-for IMAGE in $*; do
-    NAME=knative-eventing-$(basename $IMAGE | sed 's/_/-/' | sed 's/_/-/')
+core_images=$(find ./openshift/ci-operator/knative-images -mindepth 1 -maxdepth 1 -type d | LC_COLLATE=posix sort)
+for IMAGE in $core_images; do
+    NAME=knative-eventing-$(basename $IMAGE | sed 's/_/-/' | sed 's/_/-/' | sed 's/[_.]/-/' | sed 's/[_.]/-/' | sed 's/v0/upgrade-v0/')
     echo "Adding $NAME to mirror file"
     LINE="registry.svc.ci.openshift.org/openshift/knative-v$VERSION:$NAME quay.io/openshift-knative/$NAME:v$VERSION"
     # Add $LINE if not already present
@@ -38,10 +39,8 @@ done
 # Switch to openshift/release to generate PROW files
 cd $OPENSHIFT
 echo "Generating PROW files in $OPENSHIFT"
-which docker 2> /dev/null || alias docker=podman # Use docker or podman
-docker pull registry.svc.ci.openshift.org/ci/ci-operator-prowgen:latest
-docker run -it -v "${PWD}/ci-operator:/ci-operator" registry.svc.ci.openshift.org/ci/ci-operator-prowgen:latest --from-dir /ci-operator/config --to-dir /ci-operator/jobs
-
+make jobs
+make ci-operator-config
 echo "==== Changes made to $OPENSHIFT ===="
 git status
 echo "==== Commit changes to $OPENSHIFT and create a PR"
