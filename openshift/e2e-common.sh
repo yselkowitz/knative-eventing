@@ -190,6 +190,10 @@ function run_e2e_tests(){
       "$common_opts" || failed=$?
   fi
 
+  header "Running tests with Single Tenant Channel Based Broker"
+  oc apply -f test/config/st-channel-broker.yaml || return 1
+  wait_until_pods_running $EVENTING_NAMESPACE || return 1
+
   if [ -n "$test_name" ]; then # Running a single test.
     go_test_e2e -timeout=15m -parallel=1 ./test/e2e \
       -run "^(${test_name})$" \
