@@ -14,6 +14,8 @@ OPENSHIFT=${CURDIR}/../../github.com/openshift/release
 
 install:
 	go install $(CORE_IMAGES)
+	go build -o $(GOPATH)/bin/broker_ingress ./cmd/broker/ingress/
+	go build -o $(GOPATH)/bin/broker_filter ./cmd/broker/filter/
 	go build -o $(GOPATH)/bin/mtbroker_ingress ./cmd/mtbroker/ingress/
 	go build -o $(GOPATH)/bin/mtbroker_filter ./cmd/mtbroker/filter/
 .PHONY: install
@@ -54,6 +56,8 @@ generate-dockerfiles:
 	./openshift/ci-operator/generate-dockerfiles.sh openshift/ci-operator/knative-images $(CORE_IMAGES)
 	./openshift/ci-operator/generate-dockerfiles.sh openshift/ci-operator/knative-images mtbroker_ingress
 	./openshift/ci-operator/generate-dockerfiles.sh openshift/ci-operator/knative-images mtbroker_filter
+	./openshift/ci-operator/generate-dockerfiles.sh openshift/ci-operator/knative-images broker_ingress
+	./openshift/ci-operator/generate-dockerfiles.sh openshift/ci-operator/knative-images broker_filter
 	rm -rf openshift/ci-operator/knative-test-images/*
 	./openshift/ci-operator/generate-dockerfiles.sh openshift/ci-operator/knative-test-images $(TEST_IMAGES)
 .PHONY: generate-dockerfiles
