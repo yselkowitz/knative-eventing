@@ -10,12 +10,17 @@ if [ "$release" == "ci" ]; then
     image_prefix="registry.svc.ci.openshift.org/openshift/knative-nightly:knative-eventing-"
     tag=""
 else
-    image_prefix="registry.svc.ci.openshift.org/openshift/knative-${release}:knative-eventing-"
+    image_prefix="registry.svc.ci.openshift.org/openshift/knative-v${release}:knative-eventing-"
     tag=""
 fi
 
 # the core parts
 resolve_resources config/ $output_file $image_prefix $tag
+
+# Sugar Controller
+resolve_resources config/sugar/ crd-sugar-resolved.yaml $image_prefix $tag
+cat crd-sugar-resolved.yaml >> $output_file
+rm crd-sugar-resolved.yaml
 
 # InMemoryChannel CRD
 resolve_resources config/channels/in-memory-channel/ crd-channel-resolved.yaml $image_prefix $tag
