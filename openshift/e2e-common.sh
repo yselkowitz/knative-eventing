@@ -86,29 +86,22 @@ function install_strimzi(){
 
 function install_serverless(){
   header "Installing Serverless Operator"
-  git clone --branch release-1.6 https://github.com/openshift-knative/serverless-operator.git /tmp/serverless-operator
+  local operator_dir=/tmp/serverless-operator
+  local failed=0
+  git clone --branch release-1.8 https://github.com/openshift-knative/serverless-operator.git $operator_dir
+  #cp openshift/olm/serverless-operator.clusterserviceversion.yaml $operator_dir/olm-catalog/serverless-operator/manifests/serverless-operator.clusterserviceversion.yaml
+  cp openshift/serverless.bash $operator_dir/hack/lib/serverless.bash
   # unset OPENSHIFT_BUILD_NAMESPACE as its used in serverless-operator's CI environment as a switch
   # to use CI built images, we want pre-built images of k-s-o and k-o-i
   unset OPENSHIFT_BUILD_NAMESPACE
-  /tmp/serverless-operator/hack/install.sh || return 1
-  header "Serverless Operator installed successfully"
-}
-
-function create_knative_namespace(){
-  local COMPONENT="knative-$1"
-
-  cat <<-EOF | oc apply -f -
-	apiVersion: v1
-	kind: Namespace
-	metadata:
-	  name: ${COMPONENT}
-	EOF
+  pushd $operator_dir
+  ./hack/install.sh && header "Serverless Operator installed successfully" || failed=1
+  popd
+  return $failed
 }
 
 function install_knative_eventing(){
   header "Installing Knative Eventing"
-
-  create_knative_namespace eventing
 
   cat openshift/release/knative-eventing-ci.yaml > ci
   cat openshift/release/knative-eventing-channelbroker-ci.yaml >> ci
@@ -121,9 +114,6 @@ function install_knative_eventing(){
   sed -i -e "s|registry.svc.ci.openshift.org/openshift/knative-.*:knative-eventing-webhook|${IMAGE_FORMAT//\$\{component\}/knative-eventing-webhook}|g"                                     ci
   sed -i -e "s|registry.svc.ci.openshift.org/openshift/knative-.*:knative-eventing-channel-controller|${IMAGE_FORMAT//\$\{component\}/knative-eventing-channel-controller}|g"               ci
   sed -i -e "s|registry.svc.ci.openshift.org/openshift/knative-.*:knative-eventing-channel-dispatcher|${IMAGE_FORMAT//\$\{component\}/knative-eventing-channel-dispatcher}|g"               ci
-  sed -i -e "s|registry.svc.ci.openshift.org/openshift/knative-.*:knative-eventing-channel-broker|${IMAGE_FORMAT//\$\{component\}/knative-eventing-channel-broker}|g"                       ci
-  sed -i -e "s|registry.svc.ci.openshift.org/openshift/knative-.*:knative-eventing-broker-ingress|${IMAGE_FORMAT//\$\{component\}/knative-eventing-broker-ingress}|g"                       ci
-  sed -i -e "s|registry.svc.ci.openshift.org/openshift/knative-.*:knative-eventing-broker-filter|${IMAGE_FORMAT//\$\{component\}/knative-eventing-broker-filter}|g"                         ci
   sed -i -e "s|registry.svc.ci.openshift.org/openshift/knative-.*:knative-eventing-mtbroker-ingress|${IMAGE_FORMAT//\$\{component\}/knative-eventing-mtbroker-ingress}|g"                   ci
   sed -i -e "s|registry.svc.ci.openshift.org/openshift/knative-.*:knative-eventing-mtbroker-filter|${IMAGE_FORMAT//\$\{component\}/knative-eventing-mtbroker-filter}|g"                     ci
   sed -i -e "s|registry.svc.ci.openshift.org/openshift/knative-.*:knative-eventing-mtchannel-broker|${IMAGE_FORMAT//\$\{component\}/knative-eventing-mtchannel-broker}|g"                   ci
@@ -158,12 +148,12 @@ function run_e2e_tests(){
   wait_until_pods_running $EVENTING_NAMESPACE || return 1
 
   if [ -n "$test_name" ]; then # Running a single test.
-    go_test_e2e -timeout=15m -parallel=1 ./test/e2e \
+    go_test_e2e -timeout=15m -parallel=1 ./test/e2e ./test/conformance \
       -run "^(${test_name})$" \
       -brokerclass=MTChannelBasedBroker \
       "$common_opts" || failed=$?
   else
-    go_test_e2e -timeout=90m -parallel=12 ./test/e2e \
+    go_test_e2e -timeout=90m -parallel=12 ./test/e2e ./test/conformance \
       -brokerclass=MTChannelBasedBroker \
       "$common_opts" || failed=$?
   fi
