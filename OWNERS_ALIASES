@@ -1,27 +1,19 @@
 aliases:
   eventing-approvers:
-  - abd4lla
   - alanfx
   - aliok
-  - arilivigni
-  - bobmcwhirter
-  - evanchooly
+  - devguyio
   - jcrossley3
   - lberk
   - markusthoemmes
   - matzew
   - mgencur
-  - mvinkler
   eventing-reviewers:
-  - abd4lla
   - alanfx
   - aliok
-  - arilivigni
-  - bobmcwhirter
-  - evanchooly
+  - devguyio
   - jcrossley3
   - lberk
   - markusthoemmes
   - matzew
   - mgencur
-  - mvinkler
