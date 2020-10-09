@@ -36,6 +36,11 @@ tests:
   commands: "make test-e2e"
   openshift_installer_src:
     cluster_profile: aws
+- as: e2e-aws-ocp-${openshift//./}-continuous
+  commands: make test-e2e
+  cron: 0 */12 * * 1-5
+  openshift_installer_src:
+    cluster_profile: aws
 resources:
   '*':
     limits:
@@ -58,6 +63,7 @@ for img in $core_images; do
   image_base=$(basename $img)
   to_image=$(echo ${image_base//[_.]/-})
   to_image=$(echo ${to_image//v0/upgrade-v0})
+  to_image=$(echo ${to_image//migrate/storage-version-migration})
   cat <<EOF
 - dockerfile_path: openshift/ci-operator/knative-images/$image_base/Dockerfile
   from: base
