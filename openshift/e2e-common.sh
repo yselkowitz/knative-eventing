@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 
-export EVENTING_NAMESPACE=knative-eventing
+export EVENTING_NAMESPACE="${EVENTING_NAMESPACE:-knative-eventing}"
 export SYSTEM_NAMESPACE=$EVENTING_NAMESPACE
-export OLM_NAMESPACE=openshift-marketplace
+export ZIPKIN_NAMESPACE=$EVENTING_NAMESPACE
 export KNATIVE_DEFAULT_NAMESPACE=$EVENTING_NAMESPACE
 export CONFIG_TRACING_CONFIG="test/config/config-tracing.yaml"
 
@@ -114,7 +114,111 @@ function run_e2e_tests(){
   oc -n knative-eventing set env deployment/mt-broker-controller BROKER_INJECTION_DEFAULT=true || return 1
   wait_until_pods_running $EVENTING_NAMESPACE || return 2
 
-  go_test_e2e -timeout=90m -parallel=12 ./test/e2e ./test/conformance \
+  go_test_e2e -timeout=90m -parallel=12 ./test/e2e \
+    "$run_command" \
+    -brokerclass=MTChannelBasedBroker \
+    $common_opts || failed=$?
+
+  return $failed
+}
+
+function install_tracing {
+  deploy_zipkin
+  enable_eventing_tracing
+}
+
+function deploy_zipkin {
+  logger.info "Installing Zipkin in namespace ${ZIPKIN_NAMESPACE}"
+  cat <<EOF | oc apply -f - || return $?
+apiVersion: v1
+kind: Service
+metadata:
+  name: zipkin
+  namespace: ${ZIPKIN_NAMESPACE}
+spec:
+  type: NodePort
+  ports:
+  - name: http
+    port: 9411
+  selector:
+    app: zipkin
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: zipkin
+  namespace: ${ZIPKIN_NAMESPACE}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: zipkin
+  template:
+    metadata:
+      labels:
+        app: zipkin
+      annotations:
+        sidecar.istio.io/inject: "false"
+    spec:
+      containers:
+      - name: zipkin
+        image: docker.io/openzipkin/zipkin:2.13.0
+        ports:
+        - containerPort: 9411
+        env:
+        - name: POD_NAMESPACE
+          valueFrom:
+            fieldRef:
+              apiVersion: v1
+              fieldPath: metadata.namespace
+        resources:
+          limits:
+            memory: 1000Mi
+          requests:
+            memory: 256Mi
+---
+EOF
+
+  logger.info "Waiting until Zipkin is available"
+  kubectl wait deployment --all --timeout=600s --for=condition=Available -n ${ZIPKIN_NAMESPACE} || return 1
+}
+
+function enable_eventing_tracing {
+  header_text "Configuring tracing for Eventing"
+
+  cat <<EOF | oc apply -f - || return $?
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: config-tracing
+  namespace: ${EVENTING_NAMESPACE}
+data:
+  enable: "true"
+  zipkin-endpoint: "http://zipkin.${ZIPKIN_NAMESPACE}.svc.cluster.local:9411/api/v2/spans"
+  sample-rate: "1.0"
+  debug: "true"
+EOF
+}
+
+function run_conformance_tests(){
+  header "Running tests with Multi Tenant Channel Based Broker"
+  oc get ns ${SYSTEM_NAMESPACE} 2>/dev/null || SYSTEM_NAMESPACE="knative-eventing"
+  sed "s/namespace: ${KNATIVE_DEFAULT_NAMESPACE}/namespace: ${SYSTEM_NAMESPACE}/g" ${CONFIG_TRACING_CONFIG} | oc replace -f -
+  local test_name="${1:-}"
+  local run_command=""
+  local failed=0
+  local channels=messaging.knative.dev/v1beta1:Channel,messaging.knative.dev/v1beta1:InMemoryChannel,messaging.knative.dev/v1:Channel,messaging.knative.dev/v1:InMemoryChannel
+  local sources=sources.knative.dev/v1alpha2:ApiServerSource,sources.knative.dev/v1alpha2:ContainerSource,sources.knative.dev/v1alpha2:PingSource
+
+  local common_opts=" -channels=$channels -sources=$sources --kubeconfig $KUBECONFIG --imagetemplate $TEST_IMAGE_TEMPLATE"
+  if [ -n "$test_name" ]; then
+      local run_command="-run ^(${test_name})$"
+  fi
+
+  oc -n knative-eventing set env deployment/mt-broker-controller BROKER_INJECTION_DEFAULT=true || return 1
+  wait_until_pods_running $EVENTING_NAMESPACE || return 2
+
+  go_test_e2e -timeout=90m -parallel=12 ./test/conformance \
     "$run_command" \
     -brokerclass=MTChannelBasedBroker \
     $common_opts || failed=$?
