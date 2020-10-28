@@ -48,33 +48,6 @@ type Prober interface {
 	remove()
 }
 
-// Config represents a configuration for prober
-type Config struct {
-	Namespace     string
-	Interval      time.Duration
-	Serving       ServingConfig
-	FinishedSleep time.Duration
-	FailOnErrors  bool
-}
-
-type ServingConfig struct {
-	Use         bool
-	ScaleToZero bool
-}
-
-func NewConfig(namespace string) *Config {
-	return &Config{
-		Namespace:     namespace,
-		Interval:      Interval,
-		FinishedSleep: 5 * time.Second,
-		FailOnErrors:  true,
-		Serving: ServingConfig{
-			Use:         false,
-			ScaleToZero: true,
-		},
-	}
-}
-
 // RunEventProber starts a single Prober of the given domain.
 func RunEventProber(log *zap.SugaredLogger, client *testlib.Client, config *Config) Prober {
 	pm := newProber(log, client, config)
@@ -151,7 +124,7 @@ func (p *prober) remove() {
 	if p.config.Serving.Use {
 		p.removeForwarder()
 	}
-	p.client.Tracker.Clean(true)
+	ensure.NoError(p.client.Tracker.Clean(true))
 }
 
 func newProber(log *zap.SugaredLogger, client *testlib.Client, config *Config) Prober {
