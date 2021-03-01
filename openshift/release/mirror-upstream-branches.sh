@@ -4,11 +4,10 @@
 # This should be run from the basedir of the repo with no arguments
 
 
-set -e
+set -ex
 readonly TMPDIR=$(mktemp -d knativeEventingBranchingCheckXXXX -p /tmp/)
-echo "fetching upstream refs"
+
 git fetch upstream
-echo "fetching openshift refs"
 git fetch openshift
 
 # We need to seed this with a few releases that, otherwise, would make
@@ -18,9 +17,7 @@ cat >> "$TMPDIR"/midstream_branches <<EOF
 0.3
 EOF
 
-echo "getting a list of upstream branches"
 git branch -l -r "upstream/release-0.*" | cut -f2 -d'/' | cut -f2 -d'-' > "$TMPDIR"/upstream_branches
-echo "getting a list of midstream branches"
 git branch -l -r "openshift/release-v0.*" | cut -f2 -d'/' | cut -f2 -d'v' | rev | cut -f2- -d'.' | rev >> "$TMPDIR"/midstream_branches
 
 sort -o "$TMPDIR"/midstream_branches "$TMPDIR"/midstream_branches
