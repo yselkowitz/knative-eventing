@@ -56,10 +56,10 @@ function install_strimzi(){
   kubectl create namespace kafka
   curl -L "https://github.com/strimzi/strimzi-kafka-operator/releases/download/${strimzi_version}/strimzi-cluster-operator-${strimzi_version}.yaml" \
   | sed 's/namespace: .*/namespace: kafka/' \
-  | kubectl -n kafka apply -f -
+  | kubectl -n kafka create -f -
 
   header_text "Applying Strimzi Cluster file"
-  kubectl -n kafka apply -f "https://raw.githubusercontent.com/strimzi/strimzi-kafka-operator/${strimzi_version}/examples/kafka/kafka-persistent-single.yaml"
+  kubectl -n kafka create -f "https://raw.githubusercontent.com/strimzi/strimzi-kafka-operator/${strimzi_version}/examples/kafka/kafka-persistent-single.yaml"
 
   header_text "Waiting for Strimzi to become ready"
   sleep 5; while echo && kubectl get pods -n kafka | grep -v -E "(Running|Completed|STATUS)"; do sleep 5; done
@@ -69,12 +69,13 @@ function install_serverless(){
   header "Installing Serverless Operator"
   local operator_dir=/tmp/serverless-operator
   local failed=0
-  git clone --branch release-1.8 https://github.com/openshift-knative/serverless-operator.git $operator_dir
+  git clone --branch release-1.12 https://github.com/openshift-knative/serverless-operator.git $operator_dir
   #cp openshift/olm/serverless-operator.clusterserviceversion.yaml $operator_dir/olm-catalog/serverless-operator/manifests/serverless-operator.clusterserviceversion.yaml
   cp openshift/serverless.bash $operator_dir/hack/lib/serverless.bash
   # unset OPENSHIFT_BUILD_NAMESPACE as its used in serverless-operator's CI environment as a switch
   # to use CI built images, we want pre-built images of k-s-o and k-o-i
   unset OPENSHIFT_BUILD_NAMESPACE
+  unset OPENSHIFT_CI
   pushd $operator_dir
   ./hack/install.sh && header "Serverless Operator installed successfully" || failed=1
   popd
