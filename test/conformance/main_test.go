@@ -33,8 +33,6 @@ import (
 )
 
 const (
-	roleName                = "event-watcher-r"
-	serviceAccountName      = "event-watcher-sa"
 	recordEventsAPIPodName  = "api-server-source-logger-pod"
 	recordEventsPingPodName = "ping-source-logger-pod"
 )
@@ -47,6 +45,7 @@ var brokerClass string
 func TestMain(m *testing.M) {
 	os.Exit(func() int {
 		test.InitializeEventingFlags()
+		testlib.ReuseNamespace = test.EventingFlags.ReuseNamespace
 		channelTestRunner = testlib.ComponentsTestRunner{
 			ComponentFeatureMap: testlib.ChannelFeatureMap,
 			ComponentsToTest:    test.EventingFlags.Channels,
@@ -88,7 +87,7 @@ func addSourcesInitializers() {
 		testlib.ApiServerSourceTypeMeta,
 		setupclientoptions.ApiServerSourceV1ClientSetupOption(
 			ctx, apiSrcName, "Reference",
-			recordEventsAPIPodName, roleName, serviceAccountName),
+			recordEventsAPIPodName),
 	)
 	sourcesTestRunner.AddComponentSetupClientOption(
 		testlib.PingSourceTypeMeta,
