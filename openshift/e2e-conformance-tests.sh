@@ -6,11 +6,7 @@ source "$(dirname "$0")/e2e-common.sh"
 
 set -Eeuox pipefail
 
-export TEST_IMAGE_TEMPLATE="${IMAGE_FORMAT//\$\{component\}/knative-eventing-test-{{.Name}}}"
-
 env
-
-scale_up_workers || exit 1
 
 failed=0
 
