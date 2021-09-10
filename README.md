@@ -4,7 +4,7 @@ This repository holds Openshift's fork of
 [`knative/eventing`](https://github.com/knative/eventing) with additions and
 fixes needed only for the OpenShift side of things.
 
-## Release schedule
+## Release Schedule
 
 A little table to coordinate the midstream release/ci automation for our fork repo.
 
@@ -19,6 +19,24 @@ A little table to coordinate the midstream release/ci automation for our fork re
 | v0.31   | aliok           |
 | v0.32   | devguyio        |
 
+## CI Rotation
+
+| Week Starting        | CI Duty  |
+|----------------------|----------|
+| 2021-09-06T01:00:00Z | aliok    |
+| 2021-09-13T01:00:00Z | devguyio |
+| 2021-09-20T01:00:00Z | lberk    |
+| 2021-09-27T01:00:00  | aliok    |
+| 2021-10-04T01:00:00Z | devguyio |
+| 2021-10-11T01:00:00Z | lberk    |
+| 2021-10-18T01:00:00Z | aliok    |
+| 2021-10-25T01:00:00Z | devguyio |
+| 2021-11-01T01:00:00Z | lberk    |
+| 2021-11-08T01:00:00Z | matzew   |
+| 2021-11-15T01:00:00Z | aliok    |
+| 2021-11-22T01:00:00Z | devguyio |
+| 2021-11-29T01:00:00Z | lberk    |
+| 2021-12-06T01:00:00Z | matzew   |
 
 ## How this repository works ?
 
