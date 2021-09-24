@@ -10,14 +10,14 @@ A little table to coordinate the midstream release/ci automation for our fork re
 
 | Release | Release Manager |
 | ------- | --------------- |
-| v0.25   | matzew          |
+| v0.25   | devguyio        |
 | v0.26   | lberk           |
 | v0.27   | aliok           |
-| v0.28   | devguyio        |
-| v0.29   | matzew          |
+| v0.28   | matzew          |
+| v0.29   | devguyio        |
 | v0.30   | lberk           |
 | v0.31   | aliok           |
-| v0.32   | devguyio        |
+| v0.32   | matzew          |
 
 ## CI Rotation
 
