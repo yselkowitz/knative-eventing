@@ -26,8 +26,8 @@ A little table to coordinate the midstream release/ci automation for our fork re
 | 2021-09-06T01:00:00Z | aliok    |
 | 2021-09-13T01:00:00Z | devguyio |
 | 2021-09-20T01:00:00Z | lberk    |
-| 2021-09-27T01:00:00  | aliok    |
-| 2021-10-04T01:00:00Z | devguyio |
+| 2021-09-27T01:00:00  | devguyio |
+| 2021-10-04T01:00:00Z | aliok    |
 | 2021-10-11T01:00:00Z | lberk    |
 | 2021-10-18T01:00:00Z | aliok    |
 | 2021-10-25T01:00:00Z | devguyio |
