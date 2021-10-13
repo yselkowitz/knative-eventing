@@ -14,10 +14,12 @@ A little table to coordinate the midstream release/ci automation for our fork re
 | v0.26   | lberk           |
 | v0.27   | aliok           |
 | v0.28   | matzew          |
-| v0.29   | devguyio        |
-| v0.30   | lberk           |
-| v0.31   | aliok           |
-| v0.32   | matzew          |
+| v0.29   | pierdipi        |
+| v0.20   | devguyio        |
+| v0.31   | lberk           |
+| v0.32   | aliok           |
+| v0.33   | matzew          |
+| v0.34   | pierdipi        |
 
 ## CI Rotation
 
@@ -28,16 +30,19 @@ A little table to coordinate the midstream release/ci automation for our fork re
 | 2021-09-20T01:00:00Z | lberk    |
 | 2021-09-27T01:00:00  | devguyio |
 | 2021-10-04T01:00:00Z | devguyio |
-| 2021-10-11T01:00:00Z | aliok    |
-| 2021-10-18T01:00:00Z | lberk    |
-| 2021-10-25T01:00:00Z | aliok    |
-| 2021-11-01T01:00:00Z | devguyio |
-| 2021-11-08T01:00:00Z | lberk    |
-| 2021-11-15T01:00:00Z | matzew   |
-| 2021-11-22T01:00:00Z | aliok    |
-| 2021-11-29T01:00:00Z | devguyio |
-| 2021-12-06T01:00:00Z | lberk    |
-| 2021-12-13T01:00:00Z | matzew   |
+| 2021-10-11T01:00:00Z | matzew   |
+| 2021-10-18T01:00:00Z | aliok    |
+| 2021-10-25T01:00:00Z | lberk    |
+| 2021-11-01T01:00:00Z | pierdipi |
+| 2021-11-08T01:00:00Z | devguyio |
+| 2021-11-15T01:00:00Z | lberk    |
+| 2021-11-22T01:00:00Z | matzew   |
+| 2021-11-29T01:00:00Z | pierdipi |
+| 2021-11-06T01:00:00Z | aliok    |
+| 2021-12-13T01:00:00Z | devguyio |
+| 2021-12-20T01:00:00Z | lberk    |
+| 2021-12-27T01:00:00Z | matzew   |
+| 2022-01-03T01:00:00Z | pierdipi |
 
 
 ## How this repository works ?
