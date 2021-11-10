@@ -81,10 +81,10 @@ index 9d1c67da7..000000000
 -    sink-event-error-reporting.enable: "false"
 diff --git a/config/channels/in-memory-channel/configmaps/tracing.yaml b/config/channels/in-memory-channel/configmaps/tracing.yaml
 deleted file mode 100644
-index 30ac4974a..000000000
+index f3c252cd9..000000000
 --- a/config/channels/in-memory-channel/configmaps/tracing.yaml
 +++ /dev/null
-@@ -1,61 +0,0 @@
+@@ -1,56 +0,0 @@
 -# Copyright 2021 The Knative Authors
 -#
 -# Licensed under the Apache License, Version 2.0 (the "License");
@@ -111,7 +111,7 @@ index 30ac4974a..000000000
 -    app.kubernetes.io/version: devel
 -    app.kubernetes.io/part-of: knative-eventing
 -  annotations:
--    knative.dev/example-checksum: "4002b4c2"
+-    knative.dev/example-checksum: "c8f8c47b"
 -data:
 -  _example: |
 -    ################################
@@ -128,17 +128,12 @@ index 30ac4974a..000000000
 -    # this example block and unindented to be in the data block
 -    # to actually change the configuration.
 -    #
--    # This may be "zipkin" or "stackdriver", the default is "none"
+-    # This may be "zipkin" or "none", the default is "none"
 -    backend: "none"
 -
 -    # URL to zipkin collector where traces are sent.
 -    # This must be specified when backend is "zipkin"
 -    zipkin-endpoint: "http://zipkin.istio-system.svc.cluster.local:9411/api/v2/spans"
--
--    # The GCP project into which stackdriver metrics will be written
--    # when backend is "stackdriver".  If unspecified, the project-id
--    # is read from GCP metadata when running on GCP.
--    stackdriver-project-id: "my-project"
 -
 -    # Enable zipkin debug mode. This allows all spans to be sent to the server
 -    # bypassing sampling.
