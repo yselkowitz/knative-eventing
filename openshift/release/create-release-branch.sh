@@ -20,6 +20,11 @@ git add openshift OWNERS_ALIASES OWNERS Makefile
 git commit -m "Add openshift specific files."
 
 # Apply patches .
-git apply openshift/patches/*
+PATCH_DIR="openshift/patches"
+# Use release-specific patch dir if exists
+if [ -d "openshift/patches-${release}" ]; then
+    PATCH_DIR="openshift/patches-${release}"
+fi
+git apply $PATCH_DIR/*
 make RELEASE=$release generate-release
 git commit -am ":fire: Apply carried patches."
