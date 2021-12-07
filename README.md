@@ -8,18 +8,22 @@ fixes needed only for the OpenShift side of things.
 
 A little table to coordinate the midstream release/ci automation for our fork repo.
 
-| Release | Release Manager |
-| ------- | --------------- |
-| v0.25   | devguyio        |
-| v0.26   | lberk           |
-| v1.0    | aliok           |
-| v1.1    | matzew          |
-| v1.2    | pierdipi        |
-| v1.3    | devguyio        |
-| v1.4    | lberk           |
-| v1.5    | aliok           |
-| v1.6    | matzew          |
-| v1.7    | pierdipi        |
+### Possible Outdate Periodics
+
+When adding a new release, check if the corresponding version in "Possible Outdated Periodics" column is no longer supported in [OpenShift Serverless - Support Dates Matrix](https://access.redhat.com/support/policy/updates/openshift#ossrvless) and remove the corresponding periodics in such case.
+
+| Release | Release Manager | Possible Outdated Periodics |
+| ------- | --------------- |-----------------------------|
+| v0.25   | devguyio        | OSS 1.15 (v0.21 periodics)  |
+| v0.26   | lberk           | OSS 1.16 (v0.22 periodics)  |
+| v1.0    | aliok           | OSS 1.17 (v0.23 periodics)  |
+| v1.1    | matzew          | OSS 1.18 (v0.24 periodics)  |
+| v1.2    | pierdipi        | OSS 1.19 (v0.25 periodics)  |
+| v1.3    | devguyio        | OSS 1.20 (v0.26 periodics)  |
+| v1.4    | lberk           | OSS 1.21 (v1.0 periodics)   |
+| v1.5    | aliok           | OSS 1.22 (v1.1 periodics)   |
+| v1.6    | matzew          | OSS 1.23 (v1.2 periodics)   |
+| v1.7    | pierdipi        | OSS 1.24 (v1.3 periodics)   |
 
 ## CI Rotation
 
