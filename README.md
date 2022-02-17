@@ -92,7 +92,9 @@ The basic ci-operator configs mentioned above are generated via the
 generate-release.sh file in the openshift/knative-eventing
 repository. They are generated to alleviate the burden of having to
 add all possible test images to the manifest manually, which is error
-prone.
+prone. That script calls `generate-ci-config.sh` for generating the files.
+When you create a new branch update the cron expression in
+`generate-ci-config.sh` for the branch for the execution time of the periodics.
 
 Once the file is generated, it must be committed to the
 [openshift/release](https://github.com/openshift/release) repository, as the other manifests linked above. The
@@ -127,7 +129,7 @@ steps 1. and 2. below.
 
 
 1. Create a release branch from the upstream’s release tag, i.e. release-v0.5.0. This is created in the fork that we maintain of upstream.
-2. Create a CI job for that branch in openshift/release. See our CI setup instructions for deeper information.
+2. Create a CI job for that branch in openshift/release. See our CI setup instructions for deeper information but don't forget to update the cron expression in `generate-ci-config.sh` for the branch.
 3. Do whatever you need to do to make this CI pass
 4. Create a “dummy” PR with a ci file, which contains the current output of “date”. This is to trigger CI explicitly.
 5. Make sure that PR is green and merge it. This will trigger the images to become available on the CI registry.
