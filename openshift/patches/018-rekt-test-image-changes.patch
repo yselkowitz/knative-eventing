@@ -98,7 +98,7 @@ index aee4d23c2..3d797342a 100644
  	cfg := map[string]interface{}{
  		"name":      "foo",
 diff --git a/vendor/knative.dev/reconciler-test/pkg/eventshub/103-pod.yaml b/vendor/knative.dev/reconciler-test/pkg/eventshub/103-pod.yaml
-index fdf1bfe80..121012453 100644
+index da12b92a2..87cc044c4 100644
 --- a/vendor/knative.dev/reconciler-test/pkg/eventshub/103-pod.yaml
 +++ b/vendor/knative.dev/reconciler-test/pkg/eventshub/103-pod.yaml
 @@ -24,7 +24,7 @@ spec:
@@ -108,5 +108,5 @@ index fdf1bfe80..121012453 100644
 -      image: {{ .image }}
 +      image: registry.ci.openshift.org/openshift/knative-nightly:knative-eventing-test-eventshub
        imagePullPolicy: "IfNotPresent"
-       env:
-         - name: "SYSTEM_NAMESPACE"
+       {{ if .withReadiness }}
+       readinessProbe:
