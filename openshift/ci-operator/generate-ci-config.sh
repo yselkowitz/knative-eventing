@@ -9,7 +9,7 @@ if [[ "$branch" == "knative-next" ]]; then
   promotion_name="knative-nightly"
   generate_continuous=false
 else
-  promotion_name="$branch.0"
+  promotion_name="$branch.2"
 fi
 
 core_images=$(find ./openshift/ci-operator/knative-images -mindepth 1 -maxdepth 1 -type d | LC_COLLATE=posix sort)
@@ -52,6 +52,8 @@ function generate_cron_expression {
     echo '0 7 * * 1-5'
   elif [[ "$branch" == "knative-v1.2" ]]; then
     echo '0 9 * * 1-5'
+  elif [[ "$branch" == "knative-v1.3" ]]; then
+    echo '0 11 * * 1-5'
   fi
 }
 

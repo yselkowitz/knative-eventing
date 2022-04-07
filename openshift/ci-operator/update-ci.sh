@@ -38,8 +38,7 @@ stage "Generating CI config files"
 CONFIG=$CONFIGDIR/openshift-knative-eventing-release-$VERSION
 PERIODIC_CONFIG=$PERIODIC_CONFIGDIR/openshift-knative-eventing-release-$VERSION-periodics.yaml
 CURDIR=$(dirname $0)
-$CURDIR/generate-ci-config.sh knative-$VERSION 4.7 false false > ${CONFIG}__47.yaml
-$CURDIR/generate-ci-config.sh knative-$VERSION 4.8 true false > ${CONFIG}__48.yaml
+$CURDIR/generate-ci-config.sh knative-$VERSION 4.8 false false > ${CONFIG}__48.yaml
 $CURDIR/generate-ci-config.sh knative-$VERSION 4.9 true true > ${CONFIG}__49.yaml
 
 # Append missing lines to the mirror file.
@@ -53,13 +52,13 @@ if [[ "$VERSION" != "next" ]]; then
       NAME=knative-eventing-test-$(basename $IMAGE | sed 's/_/-/' | sed 's/_/-/' | sed 's/[_.]/-/' | sed 's/[_.]/-/' | sed 's/v0/upgrade-v0/')
 
       step "Adding $NAME to mirror file as $VERSION tag"
-      LINE="registry.ci.openshift.org/openshift/knative-$VERSION.0:$NAME quay.io/openshift-knative/${NAME/knative-eventing-test-/}:$VERSION"
+      LINE="registry.ci.openshift.org/openshift/knative-$VERSION.2:$NAME quay.io/openshift-knative/${NAME/knative-eventing-test-/}:$VERSION"
       # Add $LINE if not already present
       grep -q "^$LINE\$" $MIRROR || echo "$LINE"  >> $MIRROR
 
       VER=$(echo $VER | sed 's/\_/./')
       step "Adding $NAME to mirror file as $VER tag"
-      LINE="registry.ci.openshift.org/openshift/knative-$VERSION.0:$NAME quay.io/openshift-knative/${NAME/knative-eventing-test-/}:$VER"
+      LINE="registry.ci.openshift.org/openshift/knative-$VERSION.2:$NAME quay.io/openshift-knative/${NAME/knative-eventing-test-/}:$VER"
       # Add $LINE if not already present
       grep -q "^$LINE\$" $MIRROR || echo "$LINE"  >> $MIRROR
   done
