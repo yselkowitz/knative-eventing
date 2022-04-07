@@ -9,7 +9,7 @@ if [[ "$branch" == "knative-next" ]]; then
   promotion_name="knative-nightly"
   generate_continuous=false
 else
-  promotion_name="$branch.0"
+  promotion_name="$branch.1"
 fi
 
 core_images=$(find ./openshift/ci-operator/knative-images -mindepth 1 -maxdepth 1 -type d | LC_COLLATE=posix sort)
@@ -196,13 +196,13 @@ function print_resources {
 resources:
   '*':
     limits:
-      memory: 2Gi
+      memory: 3Gi
     requests:
       cpu: 500m
       memory: 2Gi
   'bin':
     limits:
-      memory: 2Gi
+      memory: 3Gi
     requests:
       cpu: 500m
       memory: 2Gi
