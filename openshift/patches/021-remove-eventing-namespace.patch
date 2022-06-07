@@ -1,0 +1,94 @@
+diff --git a/config/100-namespace.yaml b/config/100-namespace.yaml
+deleted file mode 120000
+index edab691b9..000000000
+--- a/config/100-namespace.yaml
++++ /dev/null
+@@ -1 +0,0 @@
+-core/100-namespace.yaml
+\ No newline at end of file
+diff --git a/config/channels/in-memory-channel/100-namespace.yaml b/config/channels/in-memory-channel/100-namespace.yaml
+deleted file mode 100644
+index f2ed1c461..000000000
+--- a/config/channels/in-memory-channel/100-namespace.yaml
++++ /dev/null
+@@ -1,22 +0,0 @@
+-# Copyright 2021 The Knative Authors
+-#
+-# Licensed under the Apache License, Version 2.0 (the "License");
+-# you may not use this file except in compliance with the License.
+-# You may obtain a copy of the License at
+-#
+-#     http://www.apache.org/licenses/LICENSE-2.0
+-#
+-# Unless required by applicable law or agreed to in writing, software
+-# distributed under the License is distributed on an "AS IS" BASIS,
+-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+-# See the License for the specific language governing permissions and
+-# limitations under the License.
+-
+-apiVersion: v1
+-kind: Namespace
+-metadata:
+-  name: knative-eventing
+-  labels:
+-    eventing.knative.dev/release: devel
+-    app.kubernetes.io/version: devel
+-    app.kubernetes.io/name: knative-eventing
+diff --git a/config/core/100-namespace.yaml b/config/core/100-namespace.yaml
+deleted file mode 100644
+index aeda53d7a..000000000
+--- a/config/core/100-namespace.yaml
++++ /dev/null
+@@ -1,21 +0,0 @@
+-# Copyright 2018 The Knative Authors
+-#
+-# Licensed under the Apache License, Version 2.0 (the "License");
+-# you may not use this file except in compliance with the License.
+-# You may obtain a copy of the License at
+-#
+-#     http://www.apache.org/licenses/LICENSE-2.0
+-#
+-# Unless required by applicable law or agreed to in writing, software
+-# distributed under the License is distributed on an "AS IS" BASIS,
+-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+-# See the License for the specific language governing permissions and
+-# limitations under the License.
+-apiVersion: v1
+-kind: Namespace
+-metadata:
+-  name: knative-eventing
+-  labels:
+-    eventing.knative.dev/release: devel
+-    app.kubernetes.io/version: devel
+-    app.kubernetes.io/name: knative-eventing
+diff --git a/openshift/release/artifacts/eventing-core.yaml b/openshift/release/artifacts/eventing-core.yaml
+index a40e15c90..4332c9b8b 100644
+--- a/openshift/release/artifacts/eventing-core.yaml
++++ b/openshift/release/artifacts/eventing-core.yaml
+@@ -1,26 +1,4 @@
+ ---
+-# Copyright 2018 The Knative Authors
+-#
+-# Licensed under the Apache License, Version 2.0 (the "License");
+-# you may not use this file except in compliance with the License.
+-# You may obtain a copy of the License at
+-#
+-#     http://www.apache.org/licenses/LICENSE-2.0
+-#
+-# Unless required by applicable law or agreed to in writing, software
+-# distributed under the License is distributed on an "AS IS" BASIS,
+-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+-# See the License for the specific language governing permissions and
+-# limitations under the License.
+-apiVersion: v1
+-kind: Namespace
+-metadata:
+-  name: knative-eventing
+-  labels:
+-    eventing.knative.dev/release: v1.3.2
+-    app.kubernetes.io/version: v1.3.2
+-    app.kubernetes.io/name: knative-eventing
+----
+ # Copyright 2019 The Knative Authors
+ #
+ # Licensed under the Apache License, Version 2.0 (the "License");
