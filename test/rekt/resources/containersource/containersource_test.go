@@ -51,7 +51,7 @@ func Example_min() {
 	//     spec:
 	//       containers:
 	//       - name: heartbeats
-	//         image: ko://knative.dev/eventing/test/test_images/heartbeats
+	//         image: registry.ci.openshift.org/openshift/knative-nightly:knative-eventing-test-heartbeats
 	//         args:
 	//         - --period=1
 	//         env:
@@ -110,7 +110,7 @@ func Example_full() {
 	//     spec:
 	//       containers:
 	//       - name: heartbeats
-	//         image: ko://knative.dev/eventing/test/test_images/heartbeats
+	//         image: registry.ci.openshift.org/openshift/knative-nightly:knative-eventing-test-heartbeats
 	//         args:
 	//         - --period=1
 	//         env:
